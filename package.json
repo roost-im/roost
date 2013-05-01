@@ -1,0 +1,14 @@
+{
+  "name": "roost",
+  "version": "0.0.0",
+  "description": "Where owls go to sleep.",
+  "dependencies": {
+    "q": "0.9.x",
+    "zephyr": "git://github.com/davidben/node-zephyr.git"
+  },
+  "scripts": {
+  },
+  "repository": "",
+  "author": "David Benjamin <davidben@mit.edu>",
+  "license": "MIT"
+}
