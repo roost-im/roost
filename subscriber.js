@@ -103,3 +103,16 @@ io.sockets.on('connection', function(socket) {
 });
 
 server.listen(8080);
+
+// Cancel subscriptions on exit.
+['SIGINT', 'SIGQUIT', 'SIGTERM'].forEach(function(sig) {
+  process.on(sig, function() {
+    console.log('Canceling subscriptions...');
+    zephyr.cancelSubscriptions(function(err) {
+      if (err)
+        console.log(err.code, err.message);
+      console.log('Bye');
+      process.exit();
+    });
+  });
+});
