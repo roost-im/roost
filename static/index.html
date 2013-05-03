@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <title>Roost</title>
+    <script src="/socket.io/socket.io.js"></script>
   </head>
   <body>
     <form id="subscribe">
@@ -14,9 +15,13 @@
       <input name="class">
       <input type="submit" value="Unsubscribe">
     </form>
+    <pre id="log"></pre>
     <script>
       document.getElementById("subscribe").addEventListener("submit", function(ev) {
         ev.preventDefault();
+
+        var msgClass = this.class.value;
+        var msgInstance = '*';
 
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/subscribe", true);
@@ -24,16 +29,23 @@
         // Pffft.
         xhr.onreadystatechange = function(ev) {
           if (this.readyState != 4) return;
-          console.log(this.status);
+          if (this.status == 200) {
+            log("Subscribed to " + msgClass);
+          } else {
+            log("Failed to subscribed to " + msgClass);
+          }
         };
         xhr.send(JSON.stringify({
-            class: this.class.value,
-            instance: '*'
+            class: msgClass,
+            instance: msgInstance
         }));
       });
 
       document.getElementById("unsubscribe").addEventListener("submit", function(ev) {
         ev.preventDefault();
+
+        var msgClass = this.class.value;
+        var msgInstance = '*';
 
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/unsubscribe", true);
@@ -41,12 +53,27 @@
         // Pffft.
         xhr.onreadystatechange = function(ev) {
           if (this.readyState != 4) return;
-          console.log(this.status);
+          if (this.status == 200) {
+            log("Unsubscribed from " + msgClass);
+          } else {
+            log("Failed to unsubscribed from " + msgClass);
+          }
         };
         xhr.send(JSON.stringify({
-            class: this.class.value,
-            instance: '*'
+            class: msgClass,
+            instance: msgInstance
         }));
+      });
+
+      function log(msg) {
+        document.getElementById("log").textContent += msg + "\n";
+      }
+
+      var socket = io.connect("");
+      socket.on('message', function(msg) {
+        console.log(msg);
+        log(msg.class + " / " + msg.instance + " / " + msg.sender + "\n" +
+            msg.body + "\n");
       });
     </script>
   </body>

@@ -1,22 +1,9 @@
 var express = require('express');
+var http = require('http');
+var socketIo = require('socket.io');
 var zephyr = require('zephyr');
 
 zephyr.openPort();
-
-zephyr.on('notice', function(msg) {
-  // Skip the random ACKs.
-  if (msg.kind == zephyr.HMACK ||
-      msg.kind == zephyr.SERVACK ||
-      msg.kind == zephyr.SERVNAK) {
-    return;
-  }
-
-  console.log("%s / %s / %s %s [%s] (%s)\n%s",
-              msg.class, msg.instance, msg.sender,
-              (msg.checkedAuth == zephyr.ZAUTH_YES) ?
-              "AUTHENTIC" : "UNAUTHENTIC",
-              msg.opcode, msg.body[0], msg.body[1]);
-});
 
 var app = express();
 
@@ -53,4 +40,47 @@ app.post('/api/unsubscribe', function(req, res) {
 });
 
 app.use(express.static(__dirname + '/static'));
-app.listen(8080);
+
+var server = http.createServer(app);
+var io = socketIo.listen(server);
+
+var connections = { };
+zephyr.on('notice', function(notice) {
+  // Skip the random ACKs.
+  if (notice.kind == zephyr.HMACK ||
+      notice.kind == zephyr.SERVACK ||
+      notice.kind == zephyr.SERVNAK) {
+    return;
+  }
+
+  console.log("%s / %s / %s %s [%s] (%s)\n%s",
+              notice.class, notice.instance, notice.sender,
+              (notice.checkedAuth == zephyr.ZAUTH_YES) ?
+              "AUTHENTIC" : "UNAUTHENTIC",
+              notice.opcode, notice.body[0], notice.body[1]);
+
+  var msg = {
+    time: notice.time,
+    class: notice.class,
+    instance: notice.instance,
+    sender: notice.sender,
+    recipient: notice.recipient,
+    auth: notice.auth,
+    // FIXME: Is this how you parse the body??
+    body: notice.body[1],
+    signature: notice.body[0],
+    opcode: notice.opcode
+  };
+  for (var id in connections) {
+    connections[id].emit('message', msg);
+  }
+});
+
+io.sockets.on('connection', function(socket) {
+  connections[socket.id] = socket;
+  socket.on('end', function() {
+    delete connections[socket.id];
+  });
+});
+
+server.listen(8080);
