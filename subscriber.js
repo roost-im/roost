@@ -19,5 +19,23 @@ zephyr.on('notice', function(msg) {
 });
 
 var app = express();
+
+app.use(express.bodyParser());
+
+app.post('/api/subscribe', function(req, res) {
+  if (!req.body.class) {
+    res.send(400, 'class parameter required');
+    return;
+  }
+  zephyr.subscribeTo([[req.body.class, req.body.instance, '*']], function(err) {
+    if (err) {
+      res.send(500);
+      console.log(err.code, err.message);
+      return;
+    }
+    res.send(200);
+  });
+});
+
 app.use(express.static(__dirname + '/static'));
 app.listen(8080);
