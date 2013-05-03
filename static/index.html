@@ -9,12 +9,34 @@
       <input name="class">
       <input type="submit" value="Subscribe">
     </form>
+    <br>
+    <form id="unsubscribe">
+      <input name="class">
+      <input type="submit" value="Unsubscribe">
+    </form>
     <script>
       document.getElementById("subscribe").addEventListener("submit", function(ev) {
         ev.preventDefault();
 
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/subscribe", true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        // Pffft.
+        xhr.onreadystatechange = function(ev) {
+          if (this.readyState != 4) return;
+          console.log(this.status);
+        };
+        xhr.send(JSON.stringify({
+            class: this.class.value,
+            instance: '*'
+        }));
+      });
+
+      document.getElementById("unsubscribe").addEventListener("submit", function(ev) {
+        ev.preventDefault();
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/unsubscribe", true);
         xhr.setRequestHeader("Content-Type", "application/json");
         // Pffft.
         xhr.onreadystatechange = function(ev) {
