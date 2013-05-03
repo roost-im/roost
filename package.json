@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "Where owls go to sleep.",
   "dependencies": {
+    "express": "3.x",
     "mysql": "0.9.x",
     "q": "0.9.x",
     "socket.io": "0.9.x",
