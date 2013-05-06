@@ -4,7 +4,7 @@
   "description": "Where owls go to sleep.",
   "dependencies": {
     "express": "3.x",
-    "mysql": "0.9.x",
+    "mysql": "~2.0.0-alpha8",
     "q": "0.9.x",
     "socket.io": "0.9.x",
     "zephyr": "git://github.com/davidben/node-zephyr.git"
