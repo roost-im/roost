@@ -3,6 +3,8 @@ var http = require('http');
 var socketIo = require('socket.io');
 var zephyr = require('zephyr');
 
+var conf = require('./lib/config.js');
+
 zephyr.openPort();
 
 var app = express();
@@ -102,7 +104,10 @@ io.sockets.on('connection', function(socket) {
   });
 });
 
-server.listen(8080);
+server.listen(conf.get('port'), conf.get('ip'), function() {
+  var addy = server.address();
+  console.log('running on http://' + addy.address + ":" + addy.port);
+});;
 
 // Cancel subscriptions on exit.
 ['SIGINT', 'SIGQUIT', 'SIGTERM'].forEach(function(sig) {
