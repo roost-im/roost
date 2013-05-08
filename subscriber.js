@@ -1,9 +1,11 @@
 var express = require('express');
 var http = require('http');
+var Q = require('q');
 var socketIo = require('socket.io');
 var zephyr = require('zephyr');
 
 var conf = require('./lib/config.js');
+var db = require('./lib/db.js');
 
 zephyr.openPort();
 
@@ -11,19 +13,38 @@ var app = express();
 
 app.use(express.bodyParser());
 
+function stringOrNull(arg) {
+  if (arg == null)
+    return null;
+  return String(arg);
+}
+var HACK_USER = 1;
+
 app.post('/api/subscribe', function(req, res) {
   if (!req.body.class) {
     res.send(400, 'class parameter required');
     return;
   }
-  zephyr.subscribeTo([[req.body.class, req.body.instance, '*']], function(err) {
-    if (err) {
-      res.send(500);
-      console.log(err.code, err.message);
-      return;
-    }
+  // Subscribe and save in the database.
+  var klass = String(req.body.class);
+  var instance = stringOrNull(req.body.instance);
+  Q.nfcall(
+    zephyr.subscribeTo, [[klass, (instance === null ? '*' : instance), '*']]
+  ).then(function() {
+    // Save the subscription in the database.
+    return db.getConnection().then(function(conn) {
+      return conn.addUserSubscription(
+        HACK_USER, klass, instance, ''
+      ).finally(function() {
+        conn.end();
+      });
+    });
+  }).then(function() {
     res.send(200);
-  });
+  }, function(err) {
+    res.send(500);
+    console.error(err);
+  }).done();
 });
 
 app.post('/api/unsubscribe', function(req, res) {
