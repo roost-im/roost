@@ -52,14 +52,22 @@ app.post('/api/unsubscribe', function(req, res) {
     res.send(400, 'class parameter required');
     return;
   }
-  zephyr.unsubscribeTo([[req.body.class, req.body.instance, '*']], function(err) {
-    if (err) {
-      res.send(500);
-      console.log(err.code, err.message);
-      return;
-    }
+  // Only remove from the database, not from the subscriber.
+  // TODO(davidben): Garbage-collect the zephyr subs.
+  var klass = String(req.body.class);
+  var instance = stringOrNull(req.body.instance);
+  db.getConnection().then(function(conn) {
+    return conn.removeUserSubscription(
+      HACK_USER, klass, instance, ''
+    ).finally(function() {
+      conn.end();
+    });
+  }).then(function() {
     res.send(200);
-  });
+  }, function(err) {
+    res.send(500);
+    console.error(err);
+  }).done();
 });
 
 app.use(express.static(__dirname + '/static'));

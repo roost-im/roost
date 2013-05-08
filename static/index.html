@@ -45,7 +45,7 @@
         ev.preventDefault();
 
         var msgClass = this.class.value;
-        var msgInstance = '*';
+        var msgInstance = null;
 
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/unsubscribe", true);
