@@ -32,13 +32,7 @@ app.post('/api/subscribe', function(req, res) {
     zephyr.subscribeTo, [[klass, (instance === null ? '*' : instance), '*']]
   ).then(function() {
     // Save the subscription in the database.
-    return db.getConnection().then(function(conn) {
-      return conn.addUserSubscription(
-        HACK_USER, klass, instance, ''
-      ).finally(function() {
-        conn.end();
-      });
-    });
+    return db.addUserSubscription(HACK_USER, klass, instance, '');
   }).then(function() {
     res.send(200);
   }, function(err) {
@@ -56,13 +50,9 @@ app.post('/api/unsubscribe', function(req, res) {
   // TODO(davidben): Garbage-collect the zephyr subs.
   var klass = String(req.body.class);
   var instance = stringOrNull(req.body.instance);
-  db.getConnection().then(function(conn) {
-    return conn.removeUserSubscription(
-      HACK_USER, klass, instance, ''
-    ).finally(function() {
-      conn.end();
-    });
-  }).then(function() {
+  return db.removeUserSubscription(
+    HACK_USER, klass, instance, ''
+  ).then(function() {
     res.send(200);
   }, function(err) {
     res.send(500);
