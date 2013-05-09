@@ -123,10 +123,24 @@ io.sockets.on('connection', function(socket) {
   });
 });
 
-server.listen(conf.get('port'), conf.get('ip'), function() {
-  var addy = server.address();
-  console.log('running on http://' + addy.address + ":" + addy.port);
-});;
+// Load active subscriptions from the database.
+console.log('Loading active subscriptions');
+db.loadActiveSubs().then(function(subs) {
+  subs = subs.map(function(sub) {
+    if (sub[1] === null)
+      return [sub[0], '*', sub[2]];
+    return sub;
+  });
+  console.log('Subscribing to %d triples', subs.length);
+  return Q.nfcall(zephyr.subscribeTo, subs);
+}).then(function() {
+  // And now we're ready to start doing things.
+  console.log('Subscribed');
+  server.listen(conf.get('port'), conf.get('ip'), function() {
+    var addy = server.address();
+    console.log('running on http://' + addy.address + ":" + addy.port);
+  });
+}).done();
 
 // Cancel subscriptions on exit.
 ['SIGINT', 'SIGQUIT', 'SIGTERM'].forEach(function(sig) {
