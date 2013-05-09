@@ -25,7 +25,7 @@ function parseLogFile(file, klass) {
 
   var completeMessage = function() {
     if (msg != null) {
-      var m = /From: ([^]*) <(.*)>/.exec(fromLine);
+      var m = /^From: ([^]*) <(.*)>$/.exec(fromLine);
       if (!m) {
         console.warn('Bad from line: %s', fromLine);
       } else {
