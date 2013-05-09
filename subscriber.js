@@ -106,11 +106,16 @@ zephyr.on('notice', function(notice) {
   // suggests it should be in the server.
   if (notice.body.length > 1) {
     msg.signature = notice.body[0];
-    msg.body = notice.body[1];
+    msg.message = notice.body[1];
   } else {
     msg.signature = '';
-    msg.body = notice.body[0] || '';
+    msg.message = notice.body[0] || '';
   }
+
+  // Save to the database.
+  db.saveMessage(msg).done();
+
+  // Forward to clients.
   for (var id in connections) {
     connections[id].emit('message', msg);
   }
