@@ -6,6 +6,7 @@ var zephyr = require('zephyr');
 
 var conf = require('./lib/config.js');
 var db = require('./lib/db.js');
+var zuser = require('./lib/zuser.js');
 
 zephyr.openPort();
 
@@ -65,13 +66,6 @@ app.use(express.static(__dirname + '/static'));
 var server = http.createServer(app);
 var io = socketIo.listen(server);
 
-function zuserRealm(user) {
-  var idx = user.indexOf('@');
-  if (idx >= 0 && idx < user.length - 1)
-    return user.substring(idx + 1);
-  return zephyr.getRealm();
-}
-
 var connections = { };
 zephyr.on('notice', function(notice) {
   // Skip the random ACKs.
@@ -93,7 +87,7 @@ zephyr.on('notice', function(notice) {
     instance: notice.instance,
     sender: notice.sender,
     recipient: notice.recipient,
-    realm: zuserRealm(notice.recipient),
+    realm: zuser.realm(notice.recipient),
     auth: notice.auth,
     opcode: notice.opcode
   };
