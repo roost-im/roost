@@ -13,5 +13,8 @@
   "scripts": {},
   "repository": "",
   "author": "David Benjamin <davidben@mit.edu>",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "priorityqueuejs": "~0.1.0"
+  }
 }
