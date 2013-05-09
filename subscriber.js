@@ -29,8 +29,12 @@ app.post('/api/subscribe', function(req, res) {
   // Subscribe and save in the database.
   var klass = String(req.body.class);
   var instance = stringOrNull(req.body.instance);
+  // TODO(davidben): Permissions checking.
+  var recipient = String(req.body.recipient);
   Q.nfcall(
-    zephyr.subscribeTo, [[klass, (instance === null ? '*' : instance), '*']]
+    zephyr.subscribeTo, [
+      [klass, (instance === null ? '*' : instance), recipient]
+    ]
   ).then(function() {
     // Save the subscription in the database.
     return db.addUserSubscription(HACK_USER, klass, instance, '');
@@ -51,8 +55,9 @@ app.post('/api/unsubscribe', function(req, res) {
   // TODO(davidben): Garbage-collect the zephyr subs.
   var klass = String(req.body.class);
   var instance = stringOrNull(req.body.instance);
+  var recipient = String(req.body.recipient);
   return db.removeUserSubscription(
-    HACK_USER, klass, instance, ''
+    HACK_USER, klass, instance, recipient
   ).then(function() {
     res.send(200);
   }, function(err) {
