@@ -6,6 +6,7 @@ var fs = require('fs');
 var path = require('path');
 var PriorityQueue = require('priorityqueuejs');
 var Q = require('q');
+var zephyr = require('zephyr');
 
 var db = require('../lib/db.js');
 
@@ -58,7 +59,7 @@ function parseLogFile(file, klass) {
       msg.recipient = '';
       msg.realm = 'ATHENA.MIT.EDU';
       msg.opcode = '';
-      msg.auth = 1;
+      msg.auth = zephyr.ZAUTH_YES;
 
       fromLine = lines[i + 1]; i++;
     } else if (i == 0) {
