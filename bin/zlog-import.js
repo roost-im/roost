@@ -55,7 +55,7 @@ function parseLogFile(file, klass) {
 
       msg.class = klass;
       msg.instance = m[1];
-      msg.time = new Date(m[2]);
+      msg.time = new Date(m[2]).getTime();
       msg.recipient = '';
       msg.realm = 'ATHENA.MIT.EDU';
       msg.opcode = '';
