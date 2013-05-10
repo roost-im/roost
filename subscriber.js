@@ -56,7 +56,7 @@ app.post('/api/unsubscribe', function(req, res) {
   var klass = String(req.body.class);
   var instance = stringOrNull(req.body.instance);
   var recipient = String(req.body.recipient);
-  return db.removeUserSubscription(
+  db.removeUserSubscription(
     HACK_USER, klass, instance, recipient
   ).then(function() {
     res.send(200);
