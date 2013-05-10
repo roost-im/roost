@@ -109,7 +109,7 @@ zephyr.on('notice', function(notice) {
               notice.opcode, notice.body[0], notice.body[1]);
 
   var msg = {
-    time: notice.time,
+    time: notice.time.getTime(),
     class: notice.class,
     instance: notice.instance,
     sender: notice.sender,
