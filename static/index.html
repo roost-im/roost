@@ -5,7 +5,14 @@
     <title>Roost</title>
     <script src="/socket.io/socket.io.js"></script>
   </head>
+  <style>
+    #log {
+      height: 500px;
+      overflow: scroll;
+    }
+  </style>
   <body>
+    <button id="clearlog">Clear log</button>
     <form id="subscribe">
       <input name="class">
       <input type="submit" value="Subscribe">
@@ -14,6 +21,10 @@
     <form id="unsubscribe">
       <input name="class">
       <input type="submit" value="Unsubscribe">
+    </form>
+    <form id="getmessages">
+      <input name="offset">
+      <input type="submit" value="Load messages">
     </form>
     <pre id="log"></pre>
     <script>
@@ -35,6 +46,10 @@
         };
         xhr.send();
       })();
+
+      document.getElementById("clearlog").addEventListener("click", function(ev) {
+        document.getElementById("log").textContent = "";
+      });
 
       document.getElementById("subscribe").addEventListener("submit", function(ev) {
         ev.preventDefault();
@@ -88,6 +103,32 @@
         }));
       });
 
+      document.getElementById("getmessages").addEventListener("submit", function(ev) {
+        ev.preventDefault();
+
+        var offset = this.offset.value;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET",
+                 "/api/messages?offset=" + encodeURIComponent(offset) + "&count=10",
+                 true);
+        xhr.onreadystatechange = function(ev) {
+          if (this.readyState != 4) return;
+          if (this.status == 200) {
+            var messages = JSON.parse(this.responseText);
+            messages.forEach(function(msg) {
+              log(msg.id + ": " + msg.class + " / " + msg.instance + " / " +
+                  msg.sender + " " + new Date(msg.time) + "\n" +
+                  msg.message + "\n");
+            });
+          } else {
+            log("Failed to get messages");
+          }
+        };
+        xhr.send();
+      });
+
+
       function log(msg) {
         document.getElementById("log").textContent += msg + "\n";
       }
@@ -95,7 +136,8 @@
       var socket = io.connect("");
       socket.on('message', function(msg) {
         console.log(msg);
-        log(msg.class + " / " + msg.instance + " / " + msg.sender + "\n" +
+        log(msg.class + " / " + msg.instance + " / " +
+            msg.sender + " " + new Date(msg.time) + "\n" +
             msg.message + "\n");
       });
     </script>
