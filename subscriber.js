@@ -21,6 +21,16 @@ function stringOrNull(arg) {
 }
 var HACK_USER = 1;
 
+app.get('/api/subscriptions', function(req, res) {
+  db.getUserSubscriptions(HACK_USER).then(function(subs) {
+    res.set('Content-Type', 'application/json');
+    res.send(200, JSON.stringify(subs));
+  }, function(err) {
+    res.send(500);
+    console.error(err);
+  }).done();
+});
+
 app.post('/api/subscribe', function(req, res) {
   if (!req.body.class) {
     res.send(400, 'class parameter required');

@@ -17,6 +17,25 @@
     </form>
     <pre id="log"></pre>
     <script>
+      (function() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/api/subscriptions", true);
+        xhr.onreadystatechange = function(ev) {
+          if (this.readyState != 4) return;
+          if (this.status == 200) {
+            var subs = JSON.parse(this.responseText);
+            log("Currently subscribed to:");
+            subs.forEach(function(sub) {
+              var inst = sub[1] == null ? '*' : sub[1];
+              log(" <" + sub[0] + "," + inst + "," + sub[2] + ">");
+            });
+          } else {
+            log("Failed to get subscriptions");
+          }
+        };
+        xhr.send();
+      })();
+
       document.getElementById("subscribe").addEventListener("submit", function(ev) {
         ev.preventDefault();
 
