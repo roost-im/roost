@@ -15,11 +15,13 @@
     <button id="clearlog">Clear log</button>
     <form id="subscribe">
       <input name="class">
+      <input name="instance" value="*">
       <input type="submit" value="Subscribe">
     </form>
     <br>
     <form id="unsubscribe">
       <input name="class">
+      <input name="instance" value="*">
       <input type="submit" value="Unsubscribe">
     </form>
     <form id="getmessages">
@@ -55,7 +57,8 @@
         ev.preventDefault();
 
         var msgClass = this.class.value;
-        var msgInstance = null;
+        var msgInstance = this.instance.value;
+        if (msgInstance == '*') msgInstance = null; // Meh.
         var msgRecipient = '';
 
         var xhr = new XMLHttpRequest();
@@ -81,7 +84,8 @@
         ev.preventDefault();
 
         var msgClass = this.class.value;
-        var msgInstance = null;
+        var msgInstance = this.instance.value;
+        if (msgInstance == '*') msgInstance = null; // Meh.
         var msgRecipient = '';
 
         var xhr = new XMLHttpRequest();
