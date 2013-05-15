@@ -113,6 +113,7 @@ zephyr.on('notice', function(notice) {
 
   var msg = {
     time: notice.time.getTime(),
+    receiveTime: (new Date()).getTime(),
     class: notice.class,
     instance: notice.instance,
     sender: notice.sender,
