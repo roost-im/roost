@@ -79,6 +79,7 @@ app.post('/api/unsubscribe', function(req, res) {
 app.get('/api/messages', function(req, res) {
   db.getMessages(
     HACK_USER, req.query.offset|0, {
+      reverse: Boolean(req.query.reverse|0),
       limit: req.query.count|0
     }
   ).then(function(messages) {
