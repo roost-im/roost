@@ -77,8 +77,10 @@ app.post('/api/unsubscribe', function(req, res) {
 });
 
 app.get('/api/messages', function(req, res) {
-  db.getMessagesAfter(
-    HACK_USER, req.query.offset|0, req.query.count|0
+  db.getMessages(
+    HACK_USER, req.query.offset|0, {
+      limit: req.query.count|0
+    }
   ).then(function(messages) {
     res.set('Content-Type', 'application/json');
     res.send(200, JSON.stringify(messages));
