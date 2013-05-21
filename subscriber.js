@@ -119,7 +119,7 @@ zephyr.on('notice', function(notice) {
     sender: notice.sender,
     recipient: notice.recipient,
     realm: zuser.realm(notice.recipient),
-    auth: notice.auth,
+    auth: notice.checkedAuth,
     opcode: notice.opcode
   };
   // TODO(davidben): Pull in the full logic from BarnOwl's
