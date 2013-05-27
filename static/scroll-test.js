@@ -9,6 +9,15 @@ function resolveMockId(ref, offset) {
 
 function MockMessageModel(count) {
   this.count_ = count;
+  this.listeners_ = [];
+  this.interval_ = window.setInterval(function() {
+    this.count_ += 1;
+    var listeners = this.listeners_;
+    this.listeners_ = [];
+    listeners.forEach(function(tail) {
+      tail.wakeUp_();
+    })
+  }.bind(this), 1000);
 }
 MockMessageModel.prototype.getMessage_ = function(number) {
   if (number < 0 || number >= this.count_)
@@ -61,6 +70,7 @@ function MockMessageTail(model, start, cb, opts) {
   this.requestPending_ = false;
   this.lastRequested_ = opts.inclusive ? -1 : 0;
   this.count_ = this.lastRequested_;
+  this.atEnd_ = false;
 }
 MockMessageTail.prototype.expandTo = function(count) {
   this.count_ = Math.max(this.count_, count);
@@ -69,10 +79,16 @@ MockMessageTail.prototype.expandTo = function(count) {
 MockMessageTail.prototype.close = function() {
   this.cb_ = null;
 };
-MockMessageTail.prototype.fireRequest_ = function() {
+MockMessageTail.prototype.wakeUp_ = function() {
+  this.atEnd_ = false;
+  this.fireRequest_(true);
+};
+MockMessageTail.prototype.fireRequest_ = function(immediate) {
   if (this.requestPending_)
     return;
   if (this.lastRequested_ >= this.count_)
+    return;
+  if (this.atEnd_)
     return;
 
   this.requestPending_ = true;
@@ -82,29 +98,30 @@ MockMessageTail.prototype.fireRequest_ = function() {
     if (this.reverse_) {
       requestStart = Math.max(0, this.start_ - this.count_);
       requestEnd = this.start_ - this.lastRequested_;
+      this.lastRequested_ = this.start_ - requestStart;
     } else {
       requestStart = this.start_ + this.lastRequested_ + 1;
       requestEnd = Math.min(this.start_ + this.count_ + 1, this.model_.count_);
+      this.lastRequested_ = requestEnd - this.start_ - 1;
     }
-    // TODO(davidben): Figure out the right way to mock this stuff
-    // when the size of the model changes.
-    this.lastRequested_ = this.count_;
 
     // Fake some messages.
     var msgs = [];
     for (var i = requestStart; i < requestEnd; i++) {
       msgs.push(this.model_.getMessage_(i));
     }
-    var atEnd = this.reverse_ ?
+    this.atEnd_ = this.reverse_ ?
       (requestStart == 0) :
       (requestEnd == this.model_.count_);
-    console.log(this.reverse_, atEnd);
-    if (this.cb_)
-      this.cb_(msgs, atEnd);
+    if (this.cb_) {
+      this.cb_(msgs, this.atEnd_);
+      if (this.atEnd_ && !this.reverse_)
+        this.model_.listeners_.push(this);
+    }
 
     this.requestPending_ = false;
     this.fireRequest_();
-  }.bind(this), 500);
+  }.bind(this), immediate ? 0 : 500);
 };
 
 // If the number of messages outside the scroll goes outside
@@ -403,5 +420,5 @@ $(function() {
                                 document.getElementById("messagelist"));
   document.getElementById("messagelist").focus();
 
-  messageView.scrollToMessage(mockMessageId(0));
+  messageView.scrollToMessage(mockMessageId(950));
 });
