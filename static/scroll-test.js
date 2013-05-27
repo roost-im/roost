@@ -106,6 +106,13 @@ var MAX_BUFFER = MIN_BUFFER * 3;
 function MessageView(model, container) {
   this.model_ = model;
   this.container_ = container;
+  // Make this element focusable. This is needed so that you can
+  // direct pageup/down and friends to it. Clicking in it mostly works
+  // but we cannot control that programmatically. Moreover, it exposes
+  // a quirk in WebKit and Blink; they track the most recently clicked
+  // DOM node and use it to determine scroll when there is no focus
+  // node. This breaks when we delete that node.
+  this.container_.tabIndex = 0;
 
   this.tailBelow_ = model.newTailInclusive(FIXMEmockMessageId(0),
                                            this.appendMessages_.bind(this));
@@ -282,4 +289,5 @@ MessageView.prototype.checkBuffers_ = function() {
 $(function() {
   new MessageView(new MockMessageModel(),
                   document.getElementById("messagelist"));
+  document.getElementById("messagelist").focus();
 });
