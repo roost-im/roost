@@ -259,6 +259,14 @@ MessageView.prototype.scrollToTop = function(id) {
   this.setAtTop_(true);
   this.setAtBottom_(false);
 
+  // TODO(davidben): Optimization: we know that tailAbove_ is bogus
+  // here and don't need to wait for a tailBelow_ reference point to
+  // find out. (In fact, our empty list behavior only works because we
+  // know only one side can grow.) But the system doesn't know that
+  // and will create a tailAbove_ once it gets a reference point. Put
+  // in a stub tailAbove_ of some sort to deal with this. Or maybe use
+  // atTop_.
+
   this.tailBelow_ = this.model_.newTail(null, this.appendMessages_.bind(this));
   this.tailBelow_.expandTo(TARGET_BUFFER);
   this.tailBelowOffset_ = 0;
