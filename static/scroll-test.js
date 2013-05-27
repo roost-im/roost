@@ -1,14 +1,20 @@
 "use strict";
 
-function FIXMEmockMessageId(idx) {
+function mockMessageId(idx) {
   return btoa(String(idx));
 }
-function getMockMessage(ref, offset) {
-  // Some bogus "hiding" of message ids. base64-encode their ascii
-  // representation.
-  ref = Number(atob(ref));
-  ref += offset;
-  var idx = ref % SAMPLE_MSGS.length;
+function resolveMockId(ref, offset) {
+  return Number(atob(ref));
+}
+
+function MockMessageModel(count) {
+  this.count_ = count;
+}
+MockMessageModel.prototype.getMessage_ = function(number) {
+  if (number < 0 || number >= this.count_)
+    throw "Bad message number";
+
+  var idx = number % SAMPLE_MSGS.length;
   if (idx < 0)
     idx += SAMPLE_MSGS.length;
 
@@ -16,30 +22,37 @@ function getMockMessage(ref, offset) {
   for (var key in SAMPLE_MSGS[idx]) {
     msg[key] = SAMPLE_MSGS[idx][key];
   }
-  msg.number = ref;
-  msg.id = FIXMEmockMessageId(ref);
+  msg.number = number;
+  msg.id = mockMessageId(number);
   return msg;
-}
-
-function MockMessageModel() {
-}
+};
 // TODO(davidben): Just make the API take the options dict along with
 // an initial count parameter?
 MockMessageModel.prototype.newTailInclusive = function(start, cb) {
-  return new MockMessageTail(start, cb, {
+  start = resolveMockId(start);
+  if (start < 0 || start >= this.count_)
+    throw "Bad message id";
+  return new MockMessageTail(this, start, cb, {
     inclusive: true
   });
 };
 MockMessageModel.prototype.newTail = function(start, cb) {
-  return new MockMessageTail(start, cb, {});
+  start = resolveMockId(start);
+  if (start < 0 || start >= this.count_)
+    throw "Bad message id";
+  return new MockMessageTail(this, start, cb, {});
 };
 MockMessageModel.prototype.newReverseTail = function(start, cb) {
-  return new MockMessageTail(start, cb, {
+  start = resolveMockId(start);
+  if (start < 0 || start >= this.count_)
+    throw "Bad message id";
+  return new MockMessageTail(this, start, cb, {
     reverse: true
   });
 };
 
-function MockMessageTail(start, cb, opts) {
+function MockMessageTail(model, start, cb, opts) {
+  this.model_ = model;
   this.start_ = start;
   this.reverse_ = opts.reverse;
   this.cb_ = cb;
@@ -62,27 +75,32 @@ MockMessageTail.prototype.fireRequest_ = function() {
   if (this.lastRequested_ >= this.count_)
     return;
 
-  var requestStart = this.lastRequested_;
-  var requestEnd = this.count_;
-
-  this.lastRequested_ = this.count_;
   this.requestPending_ = true;
 
   window.setTimeout(function() {
+    var requestStart, requestEnd;
+    if (this.reverse_) {
+      requestStart = Math.max(0, this.start_ - this.count_);
+      requestEnd = this.start_ - this.lastRequested_;
+    } else {
+      requestStart = this.start_ + this.lastRequested_ + 1;
+      requestEnd = Math.min(this.start_ + this.count_ + 1, this.model_.count_);
+    }
+    // TODO(davidben): Figure out the right way to mock this stuff
+    // when the size of the model changes.
+    this.lastRequested_ = this.count_;
+
     // Fake some messages.
     var msgs = [];
-    if (this.reverse_) {
-      for (var i = requestEnd; i > requestStart; i--) {
-        msgs.push(getMockMessage(this.start_, -i));
-      }
-    } else {
-      for (var i = requestStart + 1; i <= requestEnd; i++) {
-        msgs.push(getMockMessage(this.start_, i));
-      }
+    for (var i = requestStart; i < requestEnd; i++) {
+      msgs.push(this.model_.getMessage_(i));
     }
-    // For now, say we're never at the end...
+    var atEnd = this.reverse_ ?
+      (requestStart == 0) :
+      (requestEnd == this.model_.count_);
+    console.log(this.reverse_, atEnd);
     if (this.cb_)
-      this.cb_(msgs, false);
+      this.cb_(msgs, atEnd);
 
     this.requestPending_ = false;
     this.fireRequest_();
@@ -109,6 +127,22 @@ function MessageView(model, container) {
   // DOM node and use it to determine scroll when there is no focus
   // node. This breaks when we delete that node.
   this.container_.tabIndex = 0;
+
+  this.loadingAbove_ = document.createElement("div");
+  this.loadingAbove_.className = "loading";
+  this.loadingAbove_.textContent = "Loading...";
+  this.atTop_ = true;
+
+  this.loadingBelow_ = document.createElement("div");
+  this.loadingBelow_.className = "loading";
+  this.loadingBelow_.textContent = "Loading...";
+  this.atBottom_ = true;
+
+  this.messagesDiv_ = document.createElement("div");
+
+  this.container_.appendChild(this.loadingAbove_);
+  this.container_.appendChild(this.messagesDiv_);
+  this.container_.appendChild(this.loadingBelow_);
 
   this.active_ = false;
 
@@ -143,7 +177,7 @@ MessageView.prototype.reset_ = function() {
   this.listOffset_ = 0;
   this.messages_ = [];
   this.nodes_ = [];
-  this.container_.textContent = "";
+  this.messagesDiv_.textContent = "";
   this.messageToIndex_ = {};
 };
 
@@ -171,6 +205,16 @@ MessageView.prototype.scrollToMessage = function(id) {
   this.checkBuffers_();
 };
 
+MessageView.prototype.setAtTop = function(atTop) {
+  this.atTop_ = atTop;
+  this.loadingAbove_.style.display = atTop ? "none" : "block";
+};
+
+MessageView.prototype.setAtBottom = function(atBottom) {
+  this.atBottom_ = atBottom;
+  this.loadingBelow_.style.display = atBottom ? "none" : "block";
+};
+
 MessageView.prototype.appendMessages_ = function(msgs, isDone) {
   for (var i = 0; i < msgs.length; i++) {
     this.messageToIndex_[msgs[i].id] =
@@ -180,14 +224,16 @@ MessageView.prototype.appendMessages_ = function(msgs, isDone) {
     this.nodes_.push(node);
     this.messages_.push(msgs[i]);
 
-    this.container_.appendChild(node);
+    this.messagesDiv_.appendChild(node);
   }
+
+  this.setAtBottom(isDone);
 };
 
 MessageView.prototype.prependMessages_ = function(msgs, isDone) {
   // TODO(davidben): This triggers layout a bunch. Optimize this if needbe.
   var nodes = [];
-  var insertReference = this.container_.firstChild;
+  var insertReference = this.messagesDiv_.firstChild;
   var oldHeight = this.container_.scrollHeight;
   for (var i = 0; i < msgs.length; i++) {
     this.messageToIndex_[msgs[i].id] =
@@ -196,13 +242,15 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
     var node = this.formatMessage_(msgs[i]);
     nodes.push(node);
 
-    this.container_.insertBefore(node, insertReference);
+    this.messagesDiv_.insertBefore(node, insertReference);
   }
   this.container_.scrollTop += (this.container_.scrollHeight - oldHeight);
 
   this.messages_.unshift.apply(this.messages_, msgs);
   this.nodes_.unshift.apply(this.nodes_, nodes);
   this.listOffset_ -= msgs.length;
+
+  this.setAtTop(isDone);
 };
 
 var COLORS = ["black", "silver", "gray", "white", "maroon", "red",
@@ -291,11 +339,13 @@ MessageView.prototype.checkBuffers_ = function() {
     var num = MAX_BUFFER - TARGET_BUFFER;
     for (var i = 0; i < num; i++) {
       var idx = this.nodes_.length - i - 1;
-      this.container_.removeChild(this.nodes_[idx]);
+      this.messagesDiv_.removeChild(this.nodes_[idx]);
       delete this.messageToIndex_[this.messages_[idx].id];
     }
     this.nodes_.splice(this.nodes_.length - num, num);
     this.messages_.splice(this.messages_.length - num, num);
+
+    this.setAtBottom(false);
   }
 
   var above = this.checkAbove_(bounds);
@@ -335,21 +385,23 @@ MessageView.prototype.checkBuffers_ = function() {
     }
 
     for (var i = 0; i < num; i++) {
-      this.container_.removeChild(this.nodes_[i]);
+      this.messagesDiv_.removeChild(this.nodes_[i]);
       delete this.messageToIndex_[this.messages_[i].id];
     }
     this.container_.scrollTop += (this.container_.scrollHeight - oldHeight);
     this.nodes_.splice(0, num);
     this.messages_.splice(0, num);
     this.listOffset_ += num;
+
+    this.setAtTop(false);
   }
 };
 
 var messageView;  // For debugging.
 $(function() {
-  messageView = new MessageView(new MockMessageModel(),
+  messageView = new MessageView(new MockMessageModel(1000),
                                 document.getElementById("messagelist"));
   document.getElementById("messagelist").focus();
 
-  messageView.scrollToMessage(FIXMEmockMessageId(0));
+  messageView.scrollToMessage(mockMessageId(0));
 });
