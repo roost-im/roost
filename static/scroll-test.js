@@ -47,11 +47,7 @@ function MockMessageTail(start, cb, opts) {
   // Simulate doing only one XHR at a time.
   this.requestPending_ = false;
   this.lastRequested_ = opts.inclusive ? -1 : 0;
-  this.count_ = 0;
-  // We intentionally do not fire a request and assume the user will
-  // immediately call expandTo.
-  //
-  // this.fireRequest_();
+  this.count_ = this.lastRequested_;
 }
 MockMessageTail.prototype.expandTo = function(count) {
   this.count_ = Math.max(this.count_, count);
