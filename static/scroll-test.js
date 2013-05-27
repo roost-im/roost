@@ -194,8 +194,8 @@ function MessageView(model, container) {
 
   this.messageToIndex_ = { };  // Map id to global index.
 
-  this.setAtTop(false);
-  this.setAtBottom(false);
+  this.setAtTop_(false);
+  this.setAtBottom_(false);
 
   this.container_.addEventListener("scroll", this.checkBuffers_.bind(this));
   this.container_.addEventListener("keydown", this.onKeydown_.bind(this));
@@ -219,8 +219,8 @@ MessageView.prototype.reset_ = function() {
   this.messagesDiv_.textContent = "";
   this.messageToIndex_ = {};
 
-  this.setAtTop(false);
-  this.setAtBottom(false);
+  this.setAtTop_(false);
+  this.setAtBottom_(false);
 };
 
 MessageView.prototype.scrollToMessage = function(id) {
@@ -257,8 +257,8 @@ MessageView.prototype.scrollToTop = function(id) {
   // reference.
   this.reset_();
   // Blegh. Cut out the "Loading..." text now.
-  this.setAtTop(true);
-  this.setAtBottom(false);
+  this.setAtTop_(true);
+  this.setAtBottom_(false);
 
   this.tailBelow_ = this.model_.newTail(null, this.appendMessages_.bind(this));
   this.tailBelowOffset_ = 0;
@@ -277,8 +277,8 @@ MessageView.prototype.scrollToBottom = function(id) {
   // reference.
   this.reset_();
   // Blegh. Cut out the "Loading..." text now.
-  this.setAtTop(false);
-  this.setAtBottom(true);
+  this.setAtTop_(false);
+  this.setAtBottom_(true);
 
   // We create one tail and lazily create the other one when we have a
   // reference point.
@@ -293,12 +293,12 @@ MessageView.prototype.scrollToBottom = function(id) {
   this.checkBuffers_();
 };
 
-MessageView.prototype.setAtTop = function(atTop) {
+MessageView.prototype.setAtTop_ = function(atTop) {
   this.atTop_ = atTop;
   this.loadingAbove_.style.display = atTop ? "none" : "block";
 };
 
-MessageView.prototype.setAtBottom = function(atBottom) {
+MessageView.prototype.setAtBottom_ = function(atBottom) {
   this.atBottom_ = atBottom;
   this.loadingBelow_.style.display = atBottom ? "none" : "block";
   this.bottomSpacer_.style.display = atBottom ? "block" : "none";
@@ -315,7 +315,7 @@ MessageView.prototype.appendMessages_ = function(msgs, isDone) {
 
     this.messagesDiv_.appendChild(node);
   }
-  this.setAtBottom(isDone);
+  this.setAtBottom_(isDone);
   // XXX: If some assumptions change, trigger a checkBuffers_ call
   // here. When jumping to top/bottom, we delay creating one tail
   // until the other side has given us a reference for it. That should
@@ -348,7 +348,7 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
   this.nodes_.unshift.apply(this.nodes_, nodes);
   this.listOffset_ -= msgs.length;
 
-  this.setAtTop(isDone);
+  this.setAtTop_(isDone);
 };
 
 var COLORS = ["black", "silver", "gray", "white", "maroon", "red",
@@ -447,7 +447,7 @@ MessageView.prototype.checkBuffers_ = function() {
     this.nodes_.splice(this.nodes_.length - num, num);
     this.messages_.splice(this.messages_.length - num, num);
 
-    this.setAtBottom(false);
+    this.setAtBottom_(false);
   }
 
   var above = this.checkAbove_(bounds);
@@ -495,7 +495,7 @@ MessageView.prototype.checkBuffers_ = function() {
     this.messages_.splice(0, num);
     this.listOffset_ += num;
 
-    this.setAtTop(false);
+    this.setAtTop_(false);
   }
 };
 
