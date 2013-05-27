@@ -126,11 +126,17 @@ function MessageView(model, container) {
   this.messages_ = [];
   this.nodes_ = [];
 
+  this.messageToIndex_ = { };  // Map id to global index.
+
   this.container_.addEventListener("scroll", this.checkBuffers_.bind(this));
   this.checkBuffers_();
 }
+
 MessageView.prototype.appendMessages_ = function(msgs, isDone) {
   for (var i = 0; i < msgs.length; i++) {
+    this.messageToIndex_[msgs[i].id] =
+      this.messages_.length + this.listOffset_;
+
     var node = this.formatMessage_(msgs[i]);
     this.nodes_.push(node);
     this.messages_.push(msgs[i]);
@@ -138,12 +144,16 @@ MessageView.prototype.appendMessages_ = function(msgs, isDone) {
     this.container_.appendChild(node);
   }
 };
+
 MessageView.prototype.prependMessages_ = function(msgs, isDone) {
   // TODO(davidben): This triggers layout a bunch. Optimize this if needbe.
   var nodes = [];
   var insertReference = this.container_.firstChild;
   var oldHeight = this.container_.scrollHeight;
   for (var i = 0; i < msgs.length; i++) {
+    this.messageToIndex_[msgs[i].id] =
+      this.listOffset_ - msgs.length + i;
+
     var node = this.formatMessage_(msgs[i]);
     nodes.push(node);
 
@@ -155,6 +165,7 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
   this.nodes_.unshift.apply(this.nodes_, nodes);
   this.listOffset_ -= msgs.length;
 };
+
 var COLORS = ["black", "silver", "gray", "white", "maroon", "red",
               "purple", "fuchsia", "green", "lime"];
 MessageView.prototype.formatMessage_ = function(msg) {
@@ -170,6 +181,7 @@ MessageView.prototype.formatMessage_ = function(msg) {
   pre.style.color = COLORS[((msg.number % COLORS.length) + COLORS.length) % COLORS.length];
   return pre;
 };
+
 // Return 1 if we need to expand below, -1 if we need to contract, and
 // 0 if neither.
 MessageView.prototype.checkBelow_ = function(bounds) {
@@ -189,6 +201,7 @@ MessageView.prototype.checkBelow_ = function(bounds) {
   
   return 0;
 };
+
 MessageView.prototype.checkAbove_ = function(bounds) {
   // Do we need to expand?
   if (this.nodes_.length < MIN_BUFFER)
@@ -235,7 +248,9 @@ MessageView.prototype.checkBuffers_ = function() {
 
     var num = MAX_BUFFER - TARGET_BUFFER;
     for (var i = 0; i < num; i++) {
-      this.container_.removeChild(this.nodes_[this.nodes_.length - i - 1]);
+      var idx = this.nodes_.length - i - 1;
+      this.container_.removeChild(this.nodes_[idx]);
+      delete this.messageToIndex_[this.messages_[idx].id];
     }
     this.nodes_.splice(this.nodes_.length - num, num);
     this.messages_.splice(this.messages_.length - num, num);
@@ -279,6 +294,7 @@ MessageView.prototype.checkBuffers_ = function() {
 
     for (var i = 0; i < num; i++) {
       this.container_.removeChild(this.nodes_[i]);
+      delete this.messageToIndex_[this.messages_[i].id];
     }
     this.container_.scrollTop += (this.container_.scrollHeight - oldHeight);
     this.nodes_.splice(0, num);
@@ -287,8 +303,9 @@ MessageView.prototype.checkBuffers_ = function() {
   }
 };
 
+var messageView;  // For debugging.
 $(function() {
-  new MessageView(new MockMessageModel(),
-                  document.getElementById("messagelist"));
+  messageView = new MessageView(new MockMessageModel(),
+                                document.getElementById("messagelist"));
   document.getElementById("messagelist").focus();
 });
