@@ -35,6 +35,10 @@ MockMessageModel.prototype.getMessage_ = function(number) {
   msg.id = mockMessageId(number);
   return msg;
 };
+// If start is null, we treat it as starting from the end. If in
+// reverse, it means from the bottom. If forwards, from the
+// top. FIXME: the semantics of this with inclusive are weeeird.
+//
 // TODO(davidben): Just make the API take the options dict along with
 // an initial count parameter?
 MockMessageModel.prototype.newTailInclusive = function(start, cb) {
@@ -46,16 +50,31 @@ MockMessageModel.prototype.newTailInclusive = function(start, cb) {
   });
 };
 MockMessageModel.prototype.newTail = function(start, cb) {
-  start = resolveMockId(start);
-  if (start < 0 || start >= this.count_)
-    throw "Bad message id";
-  return new MockMessageTail(this, start, cb, {});
-};
-MockMessageModel.prototype.newReverseTail = function(start, cb) {
-  start = resolveMockId(start);
+  var inclusive = false;
+  if (start == null) {
+    start = 0;
+    inclusive = true;
+  } else {
+    start = resolveMockId(start);
+  }
   if (start < 0 || start >= this.count_)
     throw "Bad message id";
   return new MockMessageTail(this, start, cb, {
+    inclusive: inclusive
+  });
+};
+MockMessageModel.prototype.newReverseTail = function(start, cb) {
+  var inclusive = false;
+  if (start == null) {
+    start = this.count_ - 1;
+    inclusive = true;
+  } else {
+    start = resolveMockId(start);
+  }
+  if (start < 0 || start >= this.count_)
+    throw "Bad message id";
+  return new MockMessageTail(this, start, cb, {
+    inclusive: inclusive,
     reverse: true
   });
 };
@@ -163,8 +182,6 @@ function MessageView(model, container) {
   this.container_.appendChild(this.loadingBelow_);
   this.container_.appendChild(this.bottomSpacer_);
 
-  this.active_ = false;
-
   this.tailBelow_ = null;
   this.tailBelowOffset_ = 0;  // The global index of the tail reference.
 
@@ -178,7 +195,7 @@ function MessageView(model, container) {
   this.messageToIndex_ = { };  // Map id to global index.
 
   this.setAtTop(false);
-  this.setAtBottom(true);
+  this.setAtBottom(false);
 
   this.container_.addEventListener("scroll", this.checkBuffers_.bind(this));
 }
@@ -195,7 +212,6 @@ MessageView.prototype.reset_ = function() {
     this.tailBelow_.close();
     this.tailBelow_ = null;
   }
-  this.active_ = false;
   this.listOffset_ = 0;
   this.messages_ = [];
   this.nodes_ = [];
@@ -203,7 +219,7 @@ MessageView.prototype.reset_ = function() {
   this.messageToIndex_ = {};
 
   this.setAtTop(false);
-  this.setAtBottom(true);
+  this.setAtBottom(false);
 };
 
 MessageView.prototype.scrollToMessage = function(id) {
@@ -217,7 +233,6 @@ MessageView.prototype.scrollToMessage = function(id) {
   // Otherwise, we reset the universe and use |id| as our new point of
   // reference.
   this.reset_();
-  this.active_ = true;
 
   this.tailBelow_ = this.model_.newTailInclusive(
     id, this.appendMessages_.bind(this));
@@ -226,6 +241,53 @@ MessageView.prototype.scrollToMessage = function(id) {
   this.tailAbove_ = this.model_.newReverseTail(
     id, this.prependMessages_.bind(this));
   this.tailAboveOffset_ = 0;  // The global index of the tail reference.
+
+  this.checkBuffers_();
+};
+
+MessageView.prototype.scrollToTop = function(id) {
+  if (this.atTop_) {
+    // Easy case: if the top is buffered, go there.
+    this.container_.scrollTop = 0;
+    return;
+  }
+
+  // Otherwise, we reset the universe and use |id| as our new point of
+  // reference.
+  this.reset_();
+  // Blegh. Cut out the "Loading..." text now.
+  this.setAtTop(true);
+  this.setAtBottom(false);
+
+  this.tailBelow_ = this.model_.newTail(null, this.appendMessages_.bind(this));
+  this.tailBelowOffset_ = 0;
+
+  this.checkBuffers_();
+};
+
+MessageView.prototype.scrollToBottom = function(id) {
+  if (this.atBottom_) {
+    // Easy case: if the bottom is buffered, go there.
+    this.container_.scrollTop = this.container_.scrollHeight;
+    return;
+  }
+
+  // Otherwise, we reset the universe and use |id| as our new point of
+  // reference.
+  this.reset_();
+  // Blegh. Cut out the "Loading..." text now.
+  this.setAtTop(false);
+  this.setAtBottom(true);
+
+  // We create one tail and lazily create the other one when we have a
+  // reference point.
+  //
+  // FIXME! This... works. But it's sort of odd. Also, it breaks
+  // horribly when you have zero messages. Also, note all the random
+  // comments you had to add to support this.
+  this.tailAbove_ = this.model_.newReverseTail(
+    null, this.prependMessages_.bind(this));
+  this.tailAboveOffset_ = 0;
 
   this.checkBuffers_();
 };
@@ -252,8 +314,17 @@ MessageView.prototype.appendMessages_ = function(msgs, isDone) {
 
     this.messagesDiv_.appendChild(node);
   }
-
   this.setAtBottom(isDone);
+  // XXX: If some assumptions change, trigger a checkBuffers_ call
+  // here. When jumping to top/bottom, we delay creating one tail
+  // until the other side has given us a reference for it. That should
+  // mean that append/prepend messages should pump checkBuffers_. But
+  // prependMessages already does this since it needs to
+  // scroll. appendMessages should do this, but it only happens when
+  // scrolling up and there aren't any messages before the first
+  // one. This system doesn't actually know that, so the tail is
+  // needed to kill the "Loading..." text. However, we kill those
+  // ahead of them anyway since we know what the answers are.
 };
 
 MessageView.prototype.prependMessages_ = function(msgs, isDone) {
@@ -334,19 +405,23 @@ MessageView.prototype.checkAbove_ = function(bounds) {
 };
 
 MessageView.prototype.checkBuffers_ = function() {
-  if (!this.active_)
-    return;
-
   var bounds = this.container_.getBoundingClientRect();
 
+  // Check if we need to expand/contract above or below. If a tail
+  // doesn't exist in the direction we need, create it. EXCEPTION: if
+  // we need a tail and there are no messages, we don't have a
+  // reference to create the tail from. Delay creating the tail; we'll
+  // get our reference on append/prepend from the other side. (This
+  // happens if we jump to the top or bottom.)
+  //
   // TODO(davidben): Instead of only ever working 50 messages at a
   // time, it's possibly better to just pay a binary search and figure
   // out exactly how many we need to reach TARGET_BUFFER?
   //
   // TODO(davidben): Trigger removal by receiving messages?
   var below = this.checkBelow_(bounds);
-  if (below > 0) {
-    if (!this.tailBelow_) {
+  if (below > 0 && (this.tailBelow_ || this.messages_.length)) {
+    if (!this.tailBelow_ && this.messages_.length) {
       this.tailBelow_ = this.model_.newTail(
         this.messages_[this.messages_.length - 1].id,
         this.appendMessages_.bind(this));
@@ -375,7 +450,7 @@ MessageView.prototype.checkBuffers_ = function() {
   }
 
   var above = this.checkAbove_(bounds);
-  if (above > 0) {
+  if (above > 0 && (this.tailAbove_ || this.messages_.length)) {
     if (!this.tailAbove_) {
       this.tailAbove_ = this.model_.newReverseTail(
         this.messages_[0].id,
@@ -429,5 +504,6 @@ $(function() {
                                 document.getElementById("messagelist"));
   document.getElementById("messagelist").focus();
 
-  messageView.scrollToMessage(mockMessageId(950));
+//  messageView.scrollToMessage(mockMessageId(950));
+  messageView.scrollToBottom();
 });
