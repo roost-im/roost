@@ -173,7 +173,10 @@ function MessageView(model, container) {
 
   this.loadingBelow_ = document.createElement("div");
   this.loadingBelow_.classList.add("msgview-loading-below");
-  this.loadingBelow_.textContent = "Loading...";
+  seriously = document.createElement("div");
+  seriously.classList.add("msgview-loading-below-text");
+  seriously.textContent = "Loading...";
+  this.loadingBelow_.appendChild(seriously);
 
   this.messagesDiv_ = document.createElement("div");
 
