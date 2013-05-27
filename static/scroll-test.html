@@ -23,13 +23,20 @@
       }
       #messagelist {
         max-width: 600px;
-        height: calc(100% - 20px);
-
-        margin: 10px auto 10px auto;
+        height: 100%;
+        margin: 0 auto 0 auto;
 
         background: #ddd;
         overflow: scroll;
       }
+
+      @supports (height: calc(100% - 20px)) {
+        #messagelist {
+          height: calc(100% - 20px);
+          margin: 10px auto 10px auto;
+        }
+      }
+
       pre { padding: 0; margin: 0 }
       .message {
         padding: 10px;
