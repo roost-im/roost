@@ -114,12 +114,12 @@ function MessageView(model, container) {
   // node. This breaks when we delete that node.
   this.container_.tabIndex = 0;
 
-  this.tailBelow_ = model.newTailInclusive(FIXMEmockMessageId(0),
-                                           this.appendMessages_.bind(this));
+  this.active_ = false;
+
+  this.tailBelow_ = null;
   this.tailBelowOffset_ = 0;  // The global index of the tail reference.
 
-  this.tailAbove_ = model.newReverseTail(FIXMEmockMessageId(0),
-                                         this.prependMessages_.bind(this));
+  this.tailAbove_ = null;
   this.tailAboveOffset_ = 0;  // The global index of the tail reference.
 
   this.listOffset_ = 0;  // The global index of the top of the list.
@@ -129,8 +129,51 @@ function MessageView(model, container) {
   this.messageToIndex_ = { };  // Map id to global index.
 
   this.container_.addEventListener("scroll", this.checkBuffers_.bind(this));
-  this.checkBuffers_();
 }
+
+MessageView.prototype.reset_ = function() {
+  // It's not visible. Blow everything away and start from
+  // there. (This is mildly annoying. Can we refactor some of this
+  // code to not need this?)
+  if (this.tailAbove_) {
+    this.tailAbove_.close();
+    this.tailAbove_ = null;
+  }
+  if (this.tailBelow_) {
+    this.tailBelow_.close();
+    this.tailBelow_ = null;
+  }
+  this.active_ = false;
+  this.listOffset_ = 0;
+  this.messages_ = [];
+  this.nodes_ = [];
+  this.container_.textContent = "";
+  this.messageToIndex_ = {};
+};
+
+MessageView.prototype.scrollToMessage = function(id) {
+  if (id in this.messageToIndex_) {
+    // Easy case: if the message is in our current view, we just jump
+    // to it.
+    this.nodes_[this.messageToIndex_[id] - this.listOffset_].scrollIntoView();
+    return;
+  }
+
+  // Otherwise, we reset the universe and use |id| as our new point of
+  // reference.
+  this.reset_();
+  this.active_ = true;
+
+  this.tailBelow_ = this.model_.newTailInclusive(
+    id, this.appendMessages_.bind(this));
+  this.tailBelowOffset_ = 0;
+
+  this.tailAbove_ = this.model_.newReverseTail(
+    id, this.prependMessages_.bind(this));
+  this.tailAboveOffset_ = 0;  // The global index of the tail reference.
+
+  this.checkBuffers_();
+};
 
 MessageView.prototype.appendMessages_ = function(msgs, isDone) {
   for (var i = 0; i < msgs.length; i++) {
@@ -221,6 +264,9 @@ MessageView.prototype.checkAbove_ = function(bounds) {
 };
 
 MessageView.prototype.checkBuffers_ = function() {
+  if (!this.active_)
+    return;
+
   var bounds = this.container_.getBoundingClientRect();
 
   // TODO(davidben): Instead of only ever working 50 messages at a
@@ -308,4 +354,6 @@ $(function() {
   messageView = new MessageView(new MockMessageModel(),
                                 document.getElementById("messagelist"));
   document.getElementById("messagelist").focus();
+
+  messageView.scrollToMessage(FIXMEmockMessageId(0));
 });
