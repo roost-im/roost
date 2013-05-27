@@ -213,6 +213,8 @@ MessageView.prototype.reset_ = function() {
   this.messages_ = [];
   this.nodes_ = [];
 
+  this.selected_ = null;  // The global index of the selected message.
+
   this.messageToIndex_ = {};  // Map id to global index.
 
   this.messagesDiv_.textContent = "";
@@ -300,6 +302,20 @@ MessageView.prototype.scrollToBottom = function(id) {
     null, this.prependMessages_.bind(this));
   this.tailAboveOffset_ = 0;
   this.tailAbove_.expandTo(TARGET_BUFFER);
+};
+
+MessageView.prototype.selectMessage_ = function(selected) {
+  if (this.selected_ != null) {
+    var idx = this.selected_ - this.listOffset_;
+    if (idx >= 0 && idx < this.nodes_.length)
+      this.nodes_[idx].classList.remove("message-selected");
+  }
+  this.selected_ = selected;
+  if (this.selected_ != null) {
+    var idx = this.selected_ - this.listOffset_;
+    if (idx >= 0 && idx < this.nodes_.length)
+      this.nodes_[idx].classList.add("message-selected");
+  }
 };
 
 MessageView.prototype.setAtTop_ = function(atTop) {
