@@ -504,10 +504,10 @@ MessageView.prototype.onKeydown_ = function(ev) {
   // top/bottom of the full message list.
   if (ev.keyCode == 36 /* HOME */) {
     ev.preventDefault();
-    messageView.scrollToTop();
+    this.scrollToTop();
   } else if (ev.keyCode == 35 /* END */) {
     ev.preventDefault();
-    messageView.scrollToBottom();
+    this.scrollToBottom();
   }
 };
 
