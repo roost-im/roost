@@ -198,6 +198,7 @@ function MessageView(model, container) {
   this.setAtBottom(false);
 
   this.container_.addEventListener("scroll", this.checkBuffers_.bind(this));
+  this.container_.addEventListener("keydown", this.onKeydown_.bind(this));
 }
 
 MessageView.prototype.reset_ = function() {
@@ -495,6 +496,19 @@ MessageView.prototype.checkBuffers_ = function() {
     this.listOffset_ += num;
 
     this.setAtTop(false);
+  }
+};
+
+MessageView.prototype.onKeydown_ = function(ev) {
+  // Handle home/end keys ourselves. Instead of going to the bounds of
+  // the currently buffered view (totally meaningless), they go to the
+  // top/bottom of the full message list.
+  if (ev.keyCode == 36 /* HOME */) {
+    ev.preventDefault();
+    messageView.scrollToTop();
+  } else if (ev.keyCode == 35 /* END */) {
+    ev.preventDefault();
+    messageView.scrollToBottom();
   }
 };
 
