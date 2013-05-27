@@ -56,9 +56,9 @@ MockMessageModel.prototype.newTail = function(start, cb) {
     inclusive = true;
   } else {
     start = resolveMockId(start);
+    if (start < 0 || start >= this.count_)
+      throw "Bad message id";
   }
-  if (start < 0 || start >= this.count_)
-    throw "Bad message id";
   return new MockMessageTail(this, start, cb, {
     inclusive: inclusive
   });
@@ -70,9 +70,9 @@ MockMessageModel.prototype.newReverseTail = function(start, cb) {
     inclusive = true;
   } else {
     start = resolveMockId(start);
+    if (start < 0 || start >= this.count_)
+      throw "Bad message id";
   }
-  if (start < 0 || start >= this.count_)
-    throw "Bad message id";
   return new MockMessageTail(this, start, cb, {
     inclusive: inclusive,
     reverse: true
@@ -348,6 +348,25 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
   this.listOffset_ -= msgs.length;
 
   this.setAtTop_(isDone);
+
+  // Awkward special-case: if we...
+  //
+  // 1. Reach the end of the tail above.
+  // 2. Have no messages.
+  // 3. Have no downward tail.
+  //
+  // ...then we must have scrolled to the bottom on an empty message
+  // list. But that doesn't mean we shouldn't have a bottom tail. We
+  // may later receive messages and have no way to bootstrap
+  // everything. In that case, pretend we scrolled to the top.
+  if (isDone &&
+      this.messages_.length == 0 &&
+      this.tailBelow_ == null) {
+    this.tailBelow_ =
+      this.model_.newTail(null, this.appendMessages_.bind(this));
+    this.tailBelowOffset_ = 0;
+    this.checkBuffers_();
+  }
 };
 
 var COLORS = ["black", "silver", "gray", "white", "maroon", "red",
