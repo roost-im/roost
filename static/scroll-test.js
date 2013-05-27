@@ -252,8 +252,24 @@ MessageView.prototype.checkBuffers_ = function() {
       this.tailAbove_ = null;
     }
 
-    var num = MAX_BUFFER - TARGET_BUFFER;
+    var maxRemoved = MAX_BUFFER - TARGET_BUFFER;
     var oldHeight = this.container_.scrollHeight;
+
+    // Limit the nodes removed; if we remove enough that scrollTop has
+    // to change, the scroll gets off. Do this in two passes so as not
+    // to keep re-triggering layout with
+    // getBoundingClientRect. Unfortunately, this isn't the cause of
+    // us getting stuck.
+    var heightLost = 0;
+    var maxHeight = oldHeight - this.container_.scrollTop - bounds.height;
+    for (var num = 0; num < maxRemoved; num++) {
+      // FIXME: What if there are margins?
+      var b = this.nodes_[num].getBoundingClientRect();
+      if (heightLost + b.height >= maxHeight)
+        break;
+      heightLost += b.height;
+    }
+
     for (var i = 0; i < num; i++) {
       this.container_.removeChild(this.nodes_[i]);
     }
