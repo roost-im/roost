@@ -484,6 +484,39 @@ MessageView.prototype.findBottomMessage_ = function(bounds) {
   return this.listOffset_ + lo;
 };
 
+MessageView.prototype.checkSelected_ = function() {
+  var bounds = this.container_.getBoundingClientRect();
+  // There's nothing to do.
+  if (this.messages_.length == 0)
+    return false;
+
+  // There's no selection. Start from the top message and we'll go
+  // from there.
+  var selected = this.selected_;
+  if (selected == null) {
+    selected = this.listOffset_;
+  }
+
+  // Clamp the selection to the list.
+  selected = Math.min(this.listOffset_ + this.messages_.length - 1,
+                      selected);
+  selected = Math.max(this.listOffset_, selected);
+
+  // Move on-screen if off-screen
+  var b = this.nodes_[selected - this.listOffset_].getBoundingClientRect();
+  if (b.bottom <= bounds.top) {
+    selected = this.findTopMessage_(bounds);
+  } else if (b.top >= bounds.bottom) {
+    selected = this.findBottomMessage_(bounds);
+  }
+
+  if (this.selected_ !== selected) {
+    this.selectMessage_(selected);
+    return true;
+  }
+  return false;
+};
+
 MessageView.prototype.checkBuffers_ = function() {
   var bounds = this.container_.getBoundingClientRect();
 
@@ -575,6 +608,10 @@ MessageView.prototype.checkBuffers_ = function() {
     this.messages_.splice(0, num);
     this.listOffset_ += num;
   }
+
+  // This does a binary search when scrolling past a message. We can
+  // delay this to only for arrow keys if needbe.
+  this.checkSelected_();
 };
 
 MessageView.prototype.onKeydown_ = function(ev) {
