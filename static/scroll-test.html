@@ -3,6 +3,9 @@
   <head>
     <meta charset="utf-8">
     <title>Message list test</title>
+
+    <script src="polyfills.js"></script>
+
     <script src="q.js"></script>
     <script src="jquery-2.0.1.js"></script>
     <script src="scroll-test-samples.js"></script>
@@ -48,10 +51,28 @@
         background-color: #eee;
       }
 
-      .msgview-loading {
+      .msgview-loading-above, .msgview-loading-below {
         text-align: center;
         padding: 5px;
         color: #444;
+        height: 100%;
+        position: relative;
+      }
+      .msgview-loading-above {
+        padding: 0;
+      }
+      .msgview-loading-above-text {
+        width: 100%;
+        padding: 5px 0 5px 0;
+        position: absolute;
+        bottom: 0;
+      }
+      .msgview-loading-above-at-end {
+        display: none;
+      }
+      .msgview-loading-below-at-end {
+        visibility: hidden;  /* keep the spacer */
+        height: 75%;
       }
       .msgview-bottom-spacer {
         height: 50%;

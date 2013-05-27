@@ -165,22 +165,21 @@ function MessageView(model, container) {
   this.container_.tabIndex = 0;
 
   this.loadingAbove_ = document.createElement("div");
-  this.loadingAbove_.className = "msgview-loading";
-  this.loadingAbove_.textContent = "Loading...";
+  this.loadingAbove_.classList.add("msgview-loading-above");
+  var seriously = document.createElement("div");
+  seriously.classList.add("msgview-loading-above-text");
+  seriously.textContent = "Loading...";
+  this.loadingAbove_.appendChild(seriously);
 
   this.loadingBelow_ = document.createElement("div");
-  this.loadingBelow_.className = "msgview-loading";
+  this.loadingBelow_.classList.add("msgview-loading-below");
   this.loadingBelow_.textContent = "Loading...";
-
-  this.bottomSpacer_ = document.createElement("div");
-  this.bottomSpacer_.className = "msgview-bottom-spacer";
 
   this.messagesDiv_ = document.createElement("div");
 
   this.container_.appendChild(this.loadingAbove_);
   this.container_.appendChild(this.messagesDiv_);
   this.container_.appendChild(this.loadingBelow_);
-  this.container_.appendChild(this.bottomSpacer_);
 
   this.tailBelow_ = null;
   this.tailBelowOffset_ = 0;  // The global index of the tail reference.
@@ -220,6 +219,7 @@ MessageView.prototype.reset_ = function() {
   // implement home/end behavior.
   this.setAtTop_(false);
   this.setAtBottom_(false);
+  this.loadingBelow_.scrollIntoView();
 };
 
 MessageView.prototype.scrollToMessage = function(id) {
@@ -258,6 +258,7 @@ MessageView.prototype.scrollToTop = function(id) {
   // Blegh. Cut out the "Loading..." text now.
   this.setAtTop_(true);
   this.setAtBottom_(false);
+  this.container_.scrollTop = 0;
 
   // TODO(davidben): Optimization: we know that tailAbove_ is bogus
   // here and don't need to wait for a tailBelow_ reference point to
@@ -299,14 +300,20 @@ MessageView.prototype.scrollToBottom = function(id) {
 };
 
 MessageView.prototype.setAtTop_ = function(atTop) {
+  if (this.atTop_ == atTop) return;
   this.atTop_ = atTop;
-  this.loadingAbove_.style.display = atTop ? "none" : "block";
+  if (this.atTop_)
+    this.loadingAbove_.classList.add("msgview-loading-above-at-end");
+  else
+    this.loadingAbove_.classList.remove("msgview-loading-above-at-end");
 };
 
 MessageView.prototype.setAtBottom_ = function(atBottom) {
   this.atBottom_ = atBottom;
-  this.loadingBelow_.style.display = atBottom ? "none" : "block";
-  this.bottomSpacer_.style.display = atBottom ? "block" : "none";
+  if (this.atBottom_)
+    this.loadingBelow_.classList.add("msgview-loading-below-at-end");
+  else
+    this.loadingBelow_.classList.remove("msgview-loading-below-at-end");
 };
 
 MessageView.prototype.appendMessages_ = function(msgs, isDone) {
@@ -338,13 +345,12 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
 
     this.messagesDiv_.insertBefore(node, insertReference);
   }
+  this.setAtTop_(isDone);
   this.container_.scrollTop += (this.container_.scrollHeight - oldHeight);
 
   this.messages_.unshift.apply(this.messages_, msgs);
   this.nodes_.unshift.apply(this.nodes_, nodes);
   this.listOffset_ -= msgs.length;
-
-  this.setAtTop_(isDone);
 
   // Awkward special-case: if we...
   //
@@ -506,12 +512,11 @@ MessageView.prototype.checkBuffers_ = function() {
       this.messagesDiv_.removeChild(this.nodes_[i]);
       delete this.messageToIndex_[this.messages_[i].id];
     }
+    this.setAtTop_(false);
     this.container_.scrollTop += (this.container_.scrollHeight - oldHeight);
     this.nodes_.splice(0, num);
     this.messages_.splice(0, num);
     this.listOffset_ += num;
-
-    this.setAtTop_(false);
   }
 };
 
