@@ -146,20 +146,22 @@ function MessageView(model, container) {
   this.container_.tabIndex = 0;
 
   this.loadingAbove_ = document.createElement("div");
-  this.loadingAbove_.className = "loading";
+  this.loadingAbove_.className = "msgview-loading";
   this.loadingAbove_.textContent = "Loading...";
-  this.atTop_ = true;
 
   this.loadingBelow_ = document.createElement("div");
-  this.loadingBelow_.className = "loading";
+  this.loadingBelow_.className = "msgview-loading";
   this.loadingBelow_.textContent = "Loading...";
-  this.atBottom_ = true;
+
+  this.bottomSpacer_ = document.createElement("div");
+  this.bottomSpacer_.className = "msgview-bottom-spacer";
 
   this.messagesDiv_ = document.createElement("div");
 
   this.container_.appendChild(this.loadingAbove_);
   this.container_.appendChild(this.messagesDiv_);
   this.container_.appendChild(this.loadingBelow_);
+  this.container_.appendChild(this.bottomSpacer_);
 
   this.active_ = false;
 
@@ -174,6 +176,9 @@ function MessageView(model, container) {
   this.nodes_ = [];
 
   this.messageToIndex_ = { };  // Map id to global index.
+
+  this.setAtTop(false);
+  this.setAtBottom(true);
 
   this.container_.addEventListener("scroll", this.checkBuffers_.bind(this));
 }
@@ -196,6 +201,9 @@ MessageView.prototype.reset_ = function() {
   this.nodes_ = [];
   this.messagesDiv_.textContent = "";
   this.messageToIndex_ = {};
+
+  this.setAtTop(false);
+  this.setAtBottom(true);
 };
 
 MessageView.prototype.scrollToMessage = function(id) {
@@ -230,6 +238,7 @@ MessageView.prototype.setAtTop = function(atTop) {
 MessageView.prototype.setAtBottom = function(atBottom) {
   this.atBottom_ = atBottom;
   this.loadingBelow_.style.display = atBottom ? "none" : "block";
+  this.bottomSpacer_.style.display = atBottom ? "block" : "none";
 };
 
 MessageView.prototype.appendMessages_ = function(msgs, isDone) {
