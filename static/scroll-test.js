@@ -237,12 +237,12 @@ MessageView.prototype.scrollToMessage = function(id) {
   this.tailBelow_ = this.model_.newTailInclusive(
     id, this.appendMessages_.bind(this));
   this.tailBelowOffset_ = 0;
+  this.tailBelow_.expandTo(TARGET_BUFFER);
 
   this.tailAbove_ = this.model_.newReverseTail(
     id, this.prependMessages_.bind(this));
   this.tailAboveOffset_ = 0;  // The global index of the tail reference.
-
-  this.checkBuffers_();
+  this.tailAbove_.expandTo(TARGET_BUFFER);
 };
 
 MessageView.prototype.scrollToTop = function(id) {
@@ -260,9 +260,8 @@ MessageView.prototype.scrollToTop = function(id) {
   this.setAtBottom_(false);
 
   this.tailBelow_ = this.model_.newTail(null, this.appendMessages_.bind(this));
+  this.tailBelow_.expandTo(TARGET_BUFFER);
   this.tailBelowOffset_ = 0;
-
-  this.checkBuffers_();
 };
 
 MessageView.prototype.scrollToBottom = function(id) {
@@ -288,8 +287,7 @@ MessageView.prototype.scrollToBottom = function(id) {
   this.tailAbove_ = this.model_.newReverseTail(
     null, this.prependMessages_.bind(this));
   this.tailAboveOffset_ = 0;
-
-  this.checkBuffers_();
+  this.tailAbove_.expandTo(TARGET_BUFFER);
 };
 
 MessageView.prototype.setAtTop_ = function(atTop) {
@@ -315,16 +313,7 @@ MessageView.prototype.appendMessages_ = function(msgs, isDone) {
     this.messagesDiv_.appendChild(node);
   }
   this.setAtBottom_(isDone);
-  // XXX: If some assumptions change, trigger a checkBuffers_ call
-  // here. When jumping to top/bottom, we delay creating one tail
-  // until the other side has given us a reference for it. That should
-  // mean that append/prepend messages should pump checkBuffers_. But
-  // prependMessages already does this since it needs to
-  // scroll. appendMessages should do this, but it only happens when
-  // scrolling up and there aren't any messages before the first
-  // one. This system doesn't actually know that, so the tail is
-  // needed to kill the "Loading..." text. However, we kill those
-  // ahead of them anyway since we know what the answers are.
+  this.checkBuffers_();
 };
 
 MessageView.prototype.prependMessages_ = function(msgs, isDone) {
@@ -364,9 +353,10 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
       this.tailBelow_ == null) {
     this.tailBelow_ =
       this.model_.newTail(null, this.appendMessages_.bind(this));
+    this.tailBelow_.expandTo(TARGET_BUFFER);
     this.tailBelowOffset_ = 0;
-    this.checkBuffers_();
   }
+  this.checkBuffers_();
 };
 
 var COLORS = ["black", "silver", "gray", "white", "maroon", "red",
