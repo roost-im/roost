@@ -188,14 +188,7 @@ function MessageView(model, container) {
   this.tailAbove_ = null;
   this.tailAboveOffset_ = 0;  // The global index of the tail reference.
 
-  this.listOffset_ = 0;  // The global index of the top of the list.
-  this.messages_ = [];
-  this.nodes_ = [];
-
-  this.messageToIndex_ = { };  // Map id to global index.
-
-  this.setAtTop_(false);
-  this.setAtBottom_(false);
+  this.reset_();
 
   this.container_.addEventListener("scroll", this.checkBuffers_.bind(this));
   this.container_.addEventListener("keydown", this.onKeydown_.bind(this));
@@ -213,12 +206,18 @@ MessageView.prototype.reset_ = function() {
     this.tailBelow_.close();
     this.tailBelow_ = null;
   }
-  this.listOffset_ = 0;
+
+  this.listOffset_ = 0;  // The global index to the top of the list.
   this.messages_ = [];
   this.nodes_ = [];
-  this.messagesDiv_.textContent = "";
-  this.messageToIndex_ = {};
 
+  this.messageToIndex_ = {};  // Map id to global index.
+
+  this.messagesDiv_.textContent = "";
+
+  // FIXME: This shows two loading bars. But we can't actually lie
+  // about one side because atTop_ and atBottom_ are needed to
+  // implement home/end behavior.
   this.setAtTop_(false);
   this.setAtBottom_(false);
 };
@@ -518,6 +517,6 @@ $(function() {
                                 document.getElementById("messagelist"));
   document.getElementById("messagelist").focus();
 
-//  messageView.scrollToMessage(mockMessageId(950));
-  messageView.scrollToBottom();
+  messageView.scrollToMessage(mockMessageId(500));
+//  messageView.scrollToBottom();
 });
