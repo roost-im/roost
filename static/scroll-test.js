@@ -430,6 +430,44 @@ MessageView.prototype.checkAbove_ = function(bounds) {
   return 0;
 };
 
+MessageView.prototype.findTopMessage_ = function(bounds) {
+  if (this.nodes_.length == 0)
+    return null;
+  var lo = 0;
+  var hi = this.nodes_.length - 1;
+  while (lo < hi) {
+    var mid = ((lo + hi) / 2) | 0;
+    var b = this.nodes_[mid].getBoundingClientRect();
+    // Require at least N pixels visible.
+    // TODO(davidben): This magic number is dumb.
+    if (b.bottom <= bounds.top + 20) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return this.listOffset_ + lo;
+};
+
+MessageView.prototype.findBottomMessage_ = function(bounds) {
+  if (this.nodes_.length == 0)
+    return null;
+  var lo = 0;
+  var hi = this.nodes_.length - 1;
+  while (lo < hi) {
+    var mid = ((lo + hi + 1) / 2) | 0;
+    var b = this.nodes_[mid].getBoundingClientRect();
+    // Require at least N pixels visible.
+    // TODO(davidben): This magic number is dumb.
+    if (b.top < bounds.bottom - 20) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return this.listOffset_ + lo;
+};
+
 MessageView.prototype.checkBuffers_ = function() {
   var bounds = this.container_.getBoundingClientRect();
 
