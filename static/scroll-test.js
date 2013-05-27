@@ -200,7 +200,6 @@ MessageView.prototype.checkAbove_ = function(bounds) {
 };
 
 MessageView.prototype.checkBuffers_ = function() {
-  console.log(this.container_.scrollTop, this.container_.scrollHeight);
   var bounds = this.container_.getBoundingClientRect();
 
   // TODO(davidben): Instead of only ever working 50 messages at a
