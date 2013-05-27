@@ -159,7 +159,8 @@ var COLORS = ["black", "silver", "gray", "white", "maroon", "red",
               "purple", "fuchsia", "green", "lime"];
 MessageView.prototype.formatMessage_ = function(msg) {
   var pre = document.createElement("pre");
-  var indented = "   " + msg.message.split("\n").join("\n   ");
+  var indented = "   " +
+    msg.message.replace(/\s+$/, '').split("\n").join("\n   ");
   pre.textContent =
     msg.number + ": " +
     msg.class + " / " + msg.instance + " / " + msg.sender + "  " +
