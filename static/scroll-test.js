@@ -520,12 +520,19 @@ MessageView.prototype.findTopMessage_ = function(bounds) {
   while (lo < hi) {
     var mid = ((lo + hi) / 2) | 0;
     var b = this.nodes_[mid].getBoundingClientRect();
-    // Require at least N pixels visible.
-    if (b.bottom <= bounds.top + MARGIN_TOP) {
+    // Find the first message which starts at or after the bounds.
+    if (b.top < bounds.top) {
       lo = mid + 1;
     } else {
       hi = mid;
     }
+  }
+  // It's possible the message we found starts very late, if the
+  // previous is long. In that case, prefer the previous one.
+  if (lo > 0 &&
+      this.nodes_[lo].getBoundingClientRect().top >=
+      (bounds.top + bounds.height/2)) {
+    lo--;
   }
   return this.listOffset_ + lo;
 };
@@ -538,13 +545,19 @@ MessageView.prototype.findBottomMessage_ = function(bounds) {
   while (lo < hi) {
     var mid = ((lo + hi + 1) / 2) | 0;
     var b = this.nodes_[mid].getBoundingClientRect();
-    // Require at least N pixels visible.
-    // TODO(davidben): This magic number is dumb.
-    if (b.top < bounds.bottom - 20) {
+    // Find the first message which ends at or before the bounds.
+    if (b.bottom < bounds.bottom) {
       lo = mid;
     } else {
       hi = mid - 1;
     }
+  }
+  // It's possible the message we found ends very early, if the
+  // next is long. In that case, prefer the next one.
+  if (lo < this.nodes_.length - 2 &&
+      this.nodes_[lo].getBoundingClientRect().bottom <=
+      (bounds.top + bounds.height/2)) {
+    lo++;
   }
   return this.listOffset_ + lo;
 };
@@ -569,9 +582,9 @@ MessageView.prototype.clampSelectionToScreen_ = function() {
 
   // Move on-screen if off-screen
   var b = this.nodes_[selected - this.listOffset_].getBoundingClientRect();
-  if (b.bottom <= bounds.top) {
+  if (b.top <= bounds.top) {
     selected = this.findTopMessage_(bounds);
-  } else if (b.top >= bounds.bottom) {
+  } else if (b.bottom >= bounds.bottom) {
     selected = this.findBottomMessage_(bounds);
   }
 
