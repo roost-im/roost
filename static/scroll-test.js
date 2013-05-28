@@ -436,44 +436,6 @@ MessageView.prototype.formatMessage_ = function(msg) {
   return pre;
 };
 
-// Return 1 if we need to expand below, -1 if we need to contract, and
-// 0 if neither.
-MessageView.prototype.checkBelow_ = function(bounds) {
-  // Do we need to expand?
-  if (this.nodes_.length < MIN_BUFFER)
-    return 1;
-  var b = this.nodes_[this.nodes_.length - MIN_BUFFER].getBoundingClientRect();
-  if (bounds.bottom > b.top)
-    return 1;
-
-  // Do we need to contract?
-  if (this.nodes_.length < MAX_BUFFER)
-    return 0;
-  b = this.nodes_[this.nodes_.length - MAX_BUFFER].getBoundingClientRect();
-  if (bounds.bottom < b.top)
-    return -1;
-  
-  return 0;
-};
-
-MessageView.prototype.checkAbove_ = function(bounds) {
-  // Do we need to expand?
-  if (this.nodes_.length < MIN_BUFFER)
-    return 1;
-  var b = this.nodes_[MIN_BUFFER - 1].getBoundingClientRect();
-  if (bounds.top < b.bottom)
-    return 1;
-
-  // Do we need to contract?
-  if (this.nodes_.length < MAX_BUFFER)
-    return 0;
-  b = this.nodes_[MAX_BUFFER - 1].getBoundingClientRect();
-  if (bounds.top > b.bottom)
-    return -1;
-  
-  return 0;
-};
-
 MessageView.prototype.findTopMessage_ = function(bounds) {
   if (this.nodes_.length == 0)
     return null;
@@ -543,6 +505,44 @@ MessageView.prototype.checkSelected_ = function() {
     return true;
   }
   return false;
+};
+
+// Return 1 if we need to expand below, -1 if we need to contract, and
+// 0 if neither.
+MessageView.prototype.checkBelow_ = function(bounds) {
+  // Do we need to expand?
+  if (this.nodes_.length < MIN_BUFFER)
+    return 1;
+  var b = this.nodes_[this.nodes_.length - MIN_BUFFER].getBoundingClientRect();
+  if (bounds.bottom > b.top)
+    return 1;
+
+  // Do we need to contract?
+  if (this.nodes_.length < MAX_BUFFER)
+    return 0;
+  b = this.nodes_[this.nodes_.length - MAX_BUFFER].getBoundingClientRect();
+  if (bounds.bottom < b.top)
+    return -1;
+
+  return 0;
+};
+
+MessageView.prototype.checkAbove_ = function(bounds) {
+  // Do we need to expand?
+  if (this.nodes_.length < MIN_BUFFER)
+    return 1;
+  var b = this.nodes_[MIN_BUFFER - 1].getBoundingClientRect();
+  if (bounds.top < b.bottom)
+    return 1;
+
+  // Do we need to contract?
+  if (this.nodes_.length < MAX_BUFFER)
+    return 0;
+  b = this.nodes_[MAX_BUFFER - 1].getBoundingClientRect();
+  if (bounds.top > b.bottom)
+    return -1;
+
+  return 0;
 };
 
 MessageView.prototype.checkBuffers_ = function() {
