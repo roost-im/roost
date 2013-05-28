@@ -719,6 +719,9 @@ MessageView.prototype.adjustSelection_ = function(direction) {
       newSelected - this.listOffset_ < 0)
     return false;  // There isn't a message to select.
 
+  // TODO(davidben): This grew organically out of a handful of
+  // experiments before settling on something similar to what BarnOwl
+  // does anyway. It can probably be simplified.
   this.selectMessage_(newSelected);
   var newNode = this.selectedNode_();
   if (newNode) {
@@ -728,20 +731,24 @@ MessageView.prototype.adjustSelection_ = function(direction) {
       newNode.getBoundingClientRect().top -
       this.topMarker_.getBoundingClientRect().top;
     // What it would take to get to the goal ratio.
-    var centerScroll = topScroll -
-      (bounds.height * ((direction < 0) ? GOAL_RATIO_UP : GOAL_RATIO_DOWN));
-    // What it would take to keep the top of the selected message fixed.
-    var fixedScroll = this.container_.scrollTop +
-      direction * node.getBoundingClientRect().height;
+    var goalScroll = topScroll - ((direction < 0) ?
+                                  (bounds.height * GOAL_RATIO_UP) :
+                                  (bounds.height * GOAL_RATIO_DOWN));
+    if ((direction < 0 && this.container_.scrollTop > goalScroll) ||
+        (direction > 0 && this.container_.scrollTop < goalScroll)) {
+      // What it would take to keep the top of the selected message fixed.
+      var fixedScroll = this.container_.scrollTop +
+        direction * node.getBoundingClientRect().height;
 
-    // Pick the first, but don't move the top of the selected message
-    // much. However, make sure the top is visible.
-    var newScroll = Math.min(
-      clamp(fixedScroll - MAX_ARROW_SCROLL,
-            centerScroll,
-            fixedScroll + MAX_ARROW_SCROLL),
-      topScroll);
-    this.container_.scrollTop = newScroll;
+      // Pick the first, but don't move the top of the selected message
+      // much. However, make sure the top is visible.
+      var newScroll = Math.min(
+        clamp(fixedScroll - MAX_ARROW_SCROLL,
+              goalScroll,
+              fixedScroll + MAX_ARROW_SCROLL),
+        topScroll);
+      this.container_.scrollTop = newScroll;
+    }
   } else {
     // This shouldn't happen...
   }
