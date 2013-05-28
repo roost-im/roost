@@ -789,10 +789,10 @@ MessageView.prototype.onKeydown_ = function(ev) {
   } else if (ev.keyCode == 35 /* END */) {
     ev.preventDefault();
     this.scrollToBottom();
-  } else if (ev.keyCode == 40 /* DOWN */) {
+  } else if (ev.keyCode == 40 /* DOWN */ || ev.keyCode == 74 /* j */) {
     if (this.adjustSelection_(1))
       ev.preventDefault();
-  } else if (ev.keyCode == 38 /* UP */) {
+  } else if (ev.keyCode == 38 /* UP */ || ev.keyCode == 75 /* k */) {
     if (this.adjustSelection_(-1))
       ev.preventDefault();
   } else if (ev.keyCode == 33 /* PAGEUP */) {
