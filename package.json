@@ -8,7 +8,7 @@
     "q": "0.9.x",
     "socket.io": "0.9.x",
     "zephyr": "git://github.com/davidben/node-zephyr.git",
-    "convict": "~0.1.0"
+    "convict": "~0.2.3"
   },
   "scripts": {},
   "repository": "",
