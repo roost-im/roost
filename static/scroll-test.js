@@ -160,6 +160,8 @@ var GOAL_RATIO_DOWN = 0.60;
 var MARGIN_TOP = 20;
 var MARGIN_BELOW = 40;
 
+var SCROLL_PAGE_MARGIN = 40;
+
 function clamp(a, b, c) {
   return Math.max(a, Math.min(b, c));
 }
@@ -530,7 +532,7 @@ MessageView.prototype.findBottomMessage_ = function(bounds) {
   return this.listOffset_ + lo;
 };
 
-MessageView.prototype.checkSelected_ = function() {
+MessageView.prototype.clampSelectionToScreen_ = function() {
   var bounds = this.container_.getBoundingClientRect();
   // There's nothing to do.
   if (this.messages_.length == 0)
@@ -743,6 +745,16 @@ MessageView.prototype.adjustSelection_ = function(direction) {
   return true;
 };
 
+MessageView.prototype.scrollPage_ = function(up) {
+  if (this.ensureSelectionVisible_())
+    return;
+
+  var bounds = this.container_.getBoundingClientRect();
+  var scrollAmount = bounds.height - SCROLL_PAGE_MARGIN;
+  this.container_.scrollTop += up ? -scrollAmount : scrollAmount;
+  this.clampSelectionToScreen_();
+};
+
 MessageView.prototype.onKeydown_ = function(ev) {
   // Handle home/end keys ourselves. Instead of going to the bounds of
   // the currently buffered view (totally meaningless), they go to the
@@ -759,6 +771,19 @@ MessageView.prototype.onKeydown_ = function(ev) {
   } else if (ev.keyCode == 38 /* UP */) {
     if (this.adjustSelection_(-1))
       ev.preventDefault();
+  } else if (ev.keyCode == 33 /* PAGEUP */) {
+    // We implement pageup, etc. ourselves too. I'd like to use the
+    // browser's, but we want to call clampSelectionToScreen_ on
+    // keyboard scrolls, but not on mouse scrolls, and we can't
+    // distinguish those from the scroll handler.
+    ev.preventDefault();
+    this.scrollPage_(true);
+  } else if (ev.keyCode == 34 /* PAGEDOWN */) {
+    ev.preventDefault();
+    this.scrollPage_(false);
+  } else if (ev.keyCode == 32 /* SPACE */) {
+    ev.preventDefault();
+    this.scrollPage_(ev.shiftKey);
   }
 };
 
