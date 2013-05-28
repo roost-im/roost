@@ -248,6 +248,7 @@ MessageView.prototype.scrollToMessage = function(id) {
   // Otherwise, we reset the universe and use |id| as our new point of
   // reference.
   this.reset_();
+  this.selectMessage_(0);
 
   this.tailBelow_ = this.model_.newTailInclusive(
     id, this.appendMessages_.bind(this));
@@ -270,6 +271,7 @@ MessageView.prototype.scrollToTop = function(id) {
   // Otherwise, we reset the universe and use |id| as our new point of
   // reference.
   this.reset_();
+  this.selectMessage_(0);
   // Blegh. Cut out the "Loading..." text now.
   this.setAtTop_(true);
   this.setAtBottom_(false);
@@ -292,6 +294,7 @@ MessageView.prototype.scrollToBottom = function(id) {
   if (this.atBottom_) {
     // Easy case: if the bottom is buffered, go there.
     this.container_.scrollTop = this.container_.scrollHeight;
+    this.selectMessage_(this.listOffset_ + this.messages_.length - 1);
     return;
   }
 
@@ -301,6 +304,7 @@ MessageView.prototype.scrollToBottom = function(id) {
   // Blegh. Cut out the "Loading..." text now.
   this.setAtTop_(false);
   this.setAtBottom_(true);
+  this.selectMessage_(0);
 
   // We create one tail and lazily create the other one when we have a
   // reference point.
@@ -366,6 +370,9 @@ MessageView.prototype.appendMessages_ = function(msgs, isDone) {
     this.messagesDiv_.appendChild(node);
   }
   this.setAtBottom_(isDone);
+  // If we were waiting to select a message that hadn't arrived yet,
+  // refresh that.
+  this.selectMessage_(this.selected_);
   this.checkBuffers_();
 };
 
