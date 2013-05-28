@@ -154,6 +154,8 @@ var TARGET_BUFFER = MIN_BUFFER * 2;
 var MAX_BUFFER = MIN_BUFFER * 3;
 
 var MAX_ARROW_SCROLL = 50;
+var GOAL_RATIO_UP = 0.25;
+var GOAL_RATIO_DOWN = 0.60;
 
 function clamp(a, b, c) {
   return Math.max(a, Math.min(b, c));
@@ -670,8 +672,9 @@ MessageView.prototype.adjustSelection_ = function(direction) {
     var topScroll =
       newNode.getBoundingClientRect().top -
       this.topMarker_.getBoundingClientRect().top;
-    // What it would take to get to the 33% point.
-    var centerScroll = topScroll - (bounds.height / 3);
+    // What it would take to get to the goal ratio.
+    var centerScroll = topScroll -
+      (bounds.height * ((direction < 0) ? GOAL_RATIO_UP : GOAL_RATIO_DOWN));
     // What it would take to keep the top of the selected message fixed.
     var fixedScroll = this.container_.scrollTop +
       direction * node.getBoundingClientRect().height;
