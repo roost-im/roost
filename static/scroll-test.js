@@ -726,7 +726,7 @@ MessageView.prototype.checkBuffers_ = function() {
   }
 };
 
-MessageView.prototype.adjustSelection_ = function(direction) {
+MessageView.prototype.adjustSelection_ = function(direction, scrollLongMessages) {
   if (this.ensureSelectionVisible_())
     return true;
 
@@ -736,10 +736,12 @@ MessageView.prototype.adjustSelection_ = function(direction) {
   var bounds = this.container_.getBoundingClientRect();
   var b = node.getBoundingClientRect();
   // Scroll to show the corresponding edge of the message first.
-  if (direction > 0 && b.bottom > bounds.bottom - MARGIN_BELOW)
-    return false;
-  if (direction < 0 && b.top < bounds.top)
-    return false;
+  if (scrollLongMessages) {
+    if (direction > 0 && b.bottom > bounds.bottom - MARGIN_BELOW)
+      return false;
+    if (direction < 0 && b.top < bounds.top)
+      return false;
+  }
 
   var newSelected = this.selected_ + direction;
   if (newSelected - this.listOffset_ >= this.nodes_.length ||
@@ -820,11 +822,11 @@ MessageView.prototype.onKeydown_ = function(ev) {
     this.scrollToBottom();
   } else if ((ev.keyCode == 40 /* DOWN */ || ev.keyCode == 74 /* j */) &&
              noModifiers(ev)) {
-    if (this.adjustSelection_(1))
+    if (this.adjustSelection_(1, ev.keyCode == 40))
       ev.preventDefault();
   } else if ((ev.keyCode == 38 /* UP */ || ev.keyCode == 75 /* k */) &&
              noModifiers(ev)) {
-    if (this.adjustSelection_(-1))
+    if (this.adjustSelection_(-1, ev.keyCode == 38))
       ev.preventDefault();
   } else if (ev.keyCode == 33 /* PAGEUP */ && noModifiers(ev)) {
     // We implement pageup, etc. ourselves too. I'd like to use the
