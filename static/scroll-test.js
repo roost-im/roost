@@ -153,6 +153,12 @@ var MIN_BUFFER = 50;
 var TARGET_BUFFER = MIN_BUFFER * 2;
 var MAX_BUFFER = MIN_BUFFER * 3;
 
+var MAX_ARROW_SCROLL = 50;
+
+function clamp(a, b, c) {
+  return Math.max(a, Math.min(b, c));
+}
+
 function MessageView(model, container) {
   this.model_ = model;
   this.container_ = container;
@@ -180,6 +186,10 @@ function MessageView(model, container) {
 
   this.messagesDiv_ = document.createElement("div");
 
+  this.topMarker_ = document.createElement("div");
+  this.topMarker_.classList.add("msgview-top-marker");
+
+  this.container_.appendChild(this.topMarker_);
   this.container_.appendChild(this.loadingAbove_);
   this.container_.appendChild(this.messagesDiv_);
   this.container_.appendChild(this.loadingBelow_);
@@ -306,17 +316,26 @@ MessageView.prototype.scrollToBottom = function(id) {
 
 MessageView.prototype.selectMessage_ = function(selected) {
   if (this.selected_ != null) {
-    var idx = this.selected_ - this.listOffset_;
-    if (idx >= 0 && idx < this.nodes_.length)
-      this.nodes_[idx].classList.remove("message-selected");
+    var node = this.selectedNode_();
+    if (node)
+      node.classList.remove("message-selected");
   }
   this.selected_ = selected;
   if (this.selected_ != null) {
-    var idx = this.selected_ - this.listOffset_;
-    if (idx >= 0 && idx < this.nodes_.length)
-      this.nodes_[idx].classList.add("message-selected");
+    var node = this.selectedNode_();
+    if (node)
+      node.classList.add("message-selected");
   }
 };
+
+MessageView.prototype.selectedNode_ = function() {
+  if (this.selected_ == null)
+    return null;
+  var idx = this.selected_ - this.listOffset_;
+  if (idx < 0 || idx >= this.nodes_.length)
+    return null;
+  return this.nodes_[idx];
+}
 
 MessageView.prototype.setAtTop_ = function(atTop) {
   if (this.atTop_ == atTop) return;
@@ -614,6 +633,56 @@ MessageView.prototype.checkBuffers_ = function() {
   this.checkSelected_();
 };
 
+MessageView.prototype.adjustSelection_ = function(direction) {
+  // If the selected message is off-screen, first that first.
+  if (this.checkSelected_()) {
+    return true;
+  }
+
+  var node = this.selectedNode_();
+  if (node == null)
+    return false;
+  var bounds = this.container_.getBoundingClientRect();
+  var b = node.getBoundingClientRect();
+  // Scroll to show the corresponding edge of the message first.
+  if (direction > 0 && b.bottom >= bounds.bottom - 40)
+    return false;
+  if (direction < 0 && b.top <= bounds.top)
+    return false;
+
+  var newSelected = this.selected_ + direction;
+  if (newSelected - this.listOffset_ >= this.nodes_.length ||
+      newSelected - this.listOffset_ < 0)
+    return false;  // There isn't a message to select.
+
+  this.selectMessage_(newSelected);
+  var newNode = this.selectedNode_();
+  if (newNode) {
+    // What it would take to get the top of the new message at the top
+    // of the screen.
+    var topScroll =
+      newNode.getBoundingClientRect().top -
+      this.topMarker_.getBoundingClientRect().top;
+    // What it would take to get to the 33% point.
+    var centerScroll = topScroll - (bounds.height / 3);
+    // What it would take to keep the top of the selected message fixed.
+    var fixedScroll = this.container_.scrollTop +
+      direction * node.getBoundingClientRect().height;
+
+    // Pick the first, but don't move the top of the selected message
+    // much. However, make sure the top is visible.
+    var newScroll = Math.min(
+      clamp(fixedScroll - MAX_ARROW_SCROLL,
+            centerScroll,
+            fixedScroll + MAX_ARROW_SCROLL),
+      topScroll);
+    this.container_.scrollTop = newScroll;
+  } else {
+    // This shouldn't happen...
+  }
+  return true;
+};
+
 MessageView.prototype.onKeydown_ = function(ev) {
   // Handle home/end keys ourselves. Instead of going to the bounds of
   // the currently buffered view (totally meaningless), they go to the
@@ -624,6 +693,12 @@ MessageView.prototype.onKeydown_ = function(ev) {
   } else if (ev.keyCode == 35 /* END */) {
     ev.preventDefault();
     this.scrollToBottom();
+  } else if (ev.keyCode == 40 /* DOWN */) {
+    if (this.adjustSelection_(1))
+      ev.preventDefault();
+  } else if (ev.keyCode == 38 /* UP */) {
+    if (this.adjustSelection_(-1))
+      ev.preventDefault();
   }
 };
 

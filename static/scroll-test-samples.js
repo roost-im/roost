@@ -683,7 +683,20 @@ var SAMPLE_MSGS = [
     "auth": 1,
     "opcode": "",
     "signature": "Jacob Morzinski",
-    "message": "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n"
+    "message":
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n" +
+    "Bacon is more than just taste; if surface are were all that\nmattered you would just grind the bacon into powder.\n"
   },
 /*
   {
