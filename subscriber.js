@@ -24,8 +24,7 @@ var HACK_USER = 1;
 
 app.get('/api/subscriptions', function(req, res) {
   db.getUserSubscriptions(HACK_USER).then(function(subs) {
-    res.set('Content-Type', 'application/json');
-    res.send(200, JSON.stringify(subs));
+    res.json(200, subs);
   }, function(err) {
     res.send(500);
     console.error(err);
@@ -85,8 +84,7 @@ app.get('/api/messages', function(req, res) {
       limit: req.query.count|0
     }
   ).then(function(messages) {
-    res.set('Content-Type', 'application/json');
-    res.send(200, JSON.stringify(messages));
+    res.json(200, messages);
   }, function(err) {
     res.send(500);
     console.error(err);
