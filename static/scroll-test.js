@@ -736,9 +736,9 @@ MessageView.prototype.adjustSelection_ = function(direction) {
   var bounds = this.container_.getBoundingClientRect();
   var b = node.getBoundingClientRect();
   // Scroll to show the corresponding edge of the message first.
-  if (direction > 0 && b.bottom >= bounds.bottom - MARGIN_BELOW)
+  if (direction > 0 && b.bottom > bounds.bottom - MARGIN_BELOW)
     return false;
-  if (direction < 0 && b.top <= bounds.top)
+  if (direction < 0 && b.top < bounds.top)
     return false;
 
   var newSelected = this.selected_ + direction;
