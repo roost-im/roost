@@ -229,8 +229,7 @@ MessageView.prototype.reset_ = function() {
   this.nodes_ = [];
 
   this.selected_ = null;  // The global index of the selected message.
-  this.selectedMessage_ = null;  // The message dictionary. null if we
-                                 // never say the message.
+  this.selectedMessage_ = null;  // null if we never saw the message.
 
   this.messageToIndex_ = {};  // Map id to global index.
 
@@ -318,7 +317,7 @@ MessageView.prototype.scrollToBottom = function(id) {
   // Blegh. Cut out the "Loading..." text now.
   this.setAtTop_(false);
   this.setAtBottom_(true);
-  this.selectMessage_(0);
+  this.selectMessage_(-1);
 
   // We create one tail and lazily create the other one when we have a
   // reference point.
@@ -468,6 +467,10 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
     this.tailBelow_.expandTo(TARGET_BUFFER);
     this.tailBelowOffset_ = 0;
   }
+
+  // If we were waiting to select a message that hadn't arrived yet,
+  // refresh that.
+  this.selectMessage_(this.selected_);
   this.checkBuffers_();
 };
 
