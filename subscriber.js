@@ -78,7 +78,8 @@ app.post('/api/unsubscribe', function(req, res) {
 
 app.get('/api/messages', function(req, res) {
   db.getMessages(
-    HACK_USER, String(req.query.offset), {
+    HACK_USER, stringOrNull(req.query.offset), {
+      inclusive: Boolean(req.query.inclusive|0),
       reverse: Boolean(req.query.reverse|0),
       limit: req.query.count|0
     }
