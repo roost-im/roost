@@ -417,10 +417,10 @@ MessageView.prototype.setAtBottom_ = function(atBottom) {
 
 MessageView.prototype.appendMessages_ = function(msgs, isDone) {
   for (var i = 0; i < msgs.length; i++) {
-    this.messageToIndex_[msgs[i].id] =
-      this.messages_.length + this.listOffset_;
+    var idx = this.messages_.length + this.listOffset_;
+    this.messageToIndex_[msgs[i].id] = idx;
 
-    var node = this.formatMessage_(msgs[i]);
+    var node = this.formatMessage_(idx, msgs[i]);
     this.nodes_.push(node);
     this.messages_.push(msgs[i]);
 
@@ -439,10 +439,10 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
   var insertReference = this.messagesDiv_.firstChild;
   var oldHeight = this.container_.scrollHeight;
   for (var i = 0; i < msgs.length; i++) {
-    this.messageToIndex_[msgs[i].id] =
-      this.listOffset_ - msgs.length + i;
+    var idx = this.listOffset_ - msgs.length + i;
+    this.messageToIndex_[msgs[i].id] = idx;
 
-    var node = this.formatMessage_(msgs[i]);
+    var node = this.formatMessage_(idx, msgs[i]);
     nodes.push(node);
 
     this.messagesDiv_.insertBefore(node, insertReference);
@@ -481,7 +481,7 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
 
 var COLORS = ["black", "silver", "gray", "white", "maroon", "red",
               "purple", "fuchsia", "green", "lime"];
-MessageView.prototype.formatMessage_ = function(msg) {
+MessageView.prototype.formatMessage_ = function(idx, msg) {
   var pre = document.createElement("pre");
   var indented = "   " +
     msg.message.replace(/\s+$/, '').split("\n").join("\n   ");
@@ -492,6 +492,9 @@ MessageView.prototype.formatMessage_ = function(msg) {
     indented;
   pre.className = "message";
   pre.style.color = COLORS[((msg.number % COLORS.length) + COLORS.length) % COLORS.length];
+
+  pre.addEventListener("click",
+                       this.onClickMessage_.bind(this, idx));
   return pre;
 };
 
@@ -785,6 +788,10 @@ MessageView.prototype.onKeydown_ = function(ev) {
     ev.preventDefault();
     this.scrollPage_(ev.shiftKey);
   }
+};
+
+MessageView.prototype.onClickMessage_ = function(idx, ev) {
+  this.selectMessage_(idx);
 };
 
 var messageView;  // For debugging.
