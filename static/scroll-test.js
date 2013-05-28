@@ -157,6 +157,9 @@ var MAX_ARROW_SCROLL = 50;
 var GOAL_RATIO_UP = 0.25;
 var GOAL_RATIO_DOWN = 0.60;
 
+var MARGIN_TOP = 20;
+var MARGIN_BELOW = 40;
+
 function clamp(a, b, c) {
   return Math.max(a, Math.min(b, c));
 }
@@ -320,6 +323,38 @@ MessageView.prototype.scrollToBottom = function(id) {
   this.tailAbove_.expandTo(TARGET_BUFFER);
 };
 
+MessageView.prototype.ensureSelectionVisible_ = function() {
+  var bounds = this.container_.getBoundingClientRect();
+
+  if (this.selected_ == null) {
+    // If we have no selection, pick the one in view.
+    this.selected_ = this.findTopMessage_(bounds);
+  }
+
+  var node = this.selectedNode_();
+  if (node == null) {
+    // We scrolled the selection off-screen. Get the message id (!!!)
+    // and scrollToMessage.
+    throw "NOT IMPLEMENTED!";
+  }
+  var b = node.getBoundingClientRect();
+
+  // Scroll the message into view if not there.
+  if (b.bottom < bounds.top + MARGIN_TOP) {
+    node.scrollIntoView(true);
+    return true;
+  }
+  if (b.top > bounds.bottom - MARGIN_BELOW) {
+    node.scrollIntoView(false);
+    b = node.getBoundingClientRect();
+    // Always anchor the top if the message is too big to fit on
+    // screen.
+    if (b.top < bounds.top)
+      node.scrollIntoView(true);
+    return true;
+  }
+};
+
 MessageView.prototype.selectMessage_ = function(selected) {
   if (this.selected_ != null) {
     var node = this.selectedNode_();
@@ -445,8 +480,7 @@ MessageView.prototype.findTopMessage_ = function(bounds) {
     var mid = ((lo + hi) / 2) | 0;
     var b = this.nodes_[mid].getBoundingClientRect();
     // Require at least N pixels visible.
-    // TODO(davidben): This magic number is dumb.
-    if (b.bottom <= bounds.top + 20) {
+    if (b.bottom <= bounds.top + MARGIN_TOP) {
       lo = mid + 1;
     } else {
       hi = mid;
@@ -636,17 +670,11 @@ MessageView.prototype.checkBuffers_ = function() {
     this.messages_.splice(0, num);
     this.listOffset_ += num;
   }
-
-  // This does a binary search when scrolling past a message. We can
-  // delay this to only for arrow keys if needbe.
-  this.checkSelected_();
 };
 
 MessageView.prototype.adjustSelection_ = function(direction) {
-  // If the selected message is off-screen, first that first.
-  if (this.checkSelected_()) {
+  if (this.ensureSelectionVisible_())
     return true;
-  }
 
   var node = this.selectedNode_();
   if (node == null)
@@ -654,7 +682,7 @@ MessageView.prototype.adjustSelection_ = function(direction) {
   var bounds = this.container_.getBoundingClientRect();
   var b = node.getBoundingClientRect();
   // Scroll to show the corresponding edge of the message first.
-  if (direction > 0 && b.bottom >= bounds.bottom - 40)
+  if (direction > 0 && b.bottom >= bounds.bottom - MARGIN_BELOW)
     return false;
   if (direction < 0 && b.top <= bounds.top)
     return false;
