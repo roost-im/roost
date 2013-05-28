@@ -6,6 +6,7 @@ var zephyr = require('zephyr');
 
 var conf = require('./lib/config.js');
 var db = require('./lib/db.js');
+var MessageQueue = require('./lib/messagequeue.js');
 var zuser = require('./lib/zuser.js');
 
 zephyr.openPort();
@@ -98,6 +99,25 @@ var server = http.createServer(app);
 var io = socketIo.listen(server);
 
 var connections = { };
+
+// Dedicated db connection for the subscriber.
+var dbConnection = db.createConnection();
+var messageQueue = new MessageQueue(function(msg) {
+  // Save to the database.
+  return dbConnection.saveMessage(msg).then(function(ret) {
+    // We didn't save the message.
+    if (!ret)
+      return;
+
+    msg.id = ret.id;
+    console.log('Received by', ret.userIds);
+
+    // Forward to clients.
+    for (var id in connections) {
+      connections[id].emit('message', msg);
+    }
+  });
+});
 zephyr.on('notice', function(notice) {
   // Skip the random ACKs.
   if (notice.kind == zephyr.HMACK ||
@@ -138,13 +158,7 @@ zephyr.on('notice', function(notice) {
     msg.message = notice.body[0] || '';
   }
 
-  // Save to the database.
-  db.saveMessage(msg).done();
-
-  // Forward to clients.
-  for (var id in connections) {
-    connections[id].emit('message', msg);
-  }
+  messageQueue.addMessage(msg);
 });
 
 io.sockets.on('connection', function(socket) {
