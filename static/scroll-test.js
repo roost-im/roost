@@ -493,11 +493,17 @@ MessageView.prototype.formatMessage_ = function(idx, msg) {
   var pre = document.createElement("pre");
   var indented = "   " +
     msg.message.replace(/\s+$/, '').split("\n").join("\n   ");
-  pre.textContent =
-    msg.number + ": " +
-    msg.class + " / " + msg.instance + " / " + msg.sender + "  " +
+
+  var a = document.createElement("a");
+  a.href = "#msg-" + msg.id;
+  a.textContent = msg.number;
+
+  pre.appendChild(a);
+  pre.appendChild(document.createTextNode(
+    ": " +
+      msg.class + " / " + msg.instance + " / " + msg.sender + "  " +
       new Date(msg.time).toString() + "\n" +
-    indented;
+      indented));
   pre.className = "message";
   pre.style.color = COLORS[((msg.number % COLORS.length) + COLORS.length) % COLORS.length];
 
@@ -815,6 +821,17 @@ $(function() {
                                 document.getElementById("messagelist"));
   document.getElementById("messagelist").focus();
 
-  messageView.scrollToMessage(mockMessageId(500));
-//  messageView.scrollToBottom();
+  if (/#msg-/.test(location.hash)) {
+    var msgId = location.hash.substring(5);
+    messageView.scrollToMessage(msgId);
+  } else {
+    messageView.scrollToBottom();
+  }
+
+  window.addEventListener("hashchange", function(ev) {
+    if (/#msg-/.test(location.hash)) {
+      var msgId = location.hash.substring(5);
+      messageView.scrollToMessage(msgId);
+    }
+  });
 });
