@@ -780,32 +780,50 @@ MessageView.prototype.scrollPage_ = function(up) {
 };
 
 MessageView.prototype.onKeydown_ = function(ev) {
+  function noModifiers(ev, except) {
+    except = except || {};
+    var modifiers = ["altKey", "altGraphKey", "ctrlKey", "metaKey", "shiftKey"];
+    for (var i = 0; i < modifiers.length; i++) {
+      if (modifiers[i] in except)
+        continue;
+      if (ev[modifiers[i]])
+        return false;
+    }
+    return true;
+  }
+
   // Handle home/end keys ourselves. Instead of going to the bounds of
   // the currently buffered view (totally meaningless), they go to the
   // top/bottom of the full message list.
-  if (ev.keyCode == 36 /* HOME */) {
+  if ((ev.keyCode == 36 /* HOME */ && noModifiers(ev)) ||
+      (ev.keyCode == 38 /* UP */ && noModifiers(ev, {metaKey:1}) &&
+       ev.metaKey)) {
     ev.preventDefault();
     this.scrollToTop();
-  } else if (ev.keyCode == 35 /* END */) {
+  } else if ((ev.keyCode == 35 /* END */ && noModifiers(ev)) ||
+             (ev.keyCode == 40 /* DOWN */ && noModifiers(ev, {metaKey:1}) &&
+              ev.metaKey)) {
     ev.preventDefault();
     this.scrollToBottom();
-  } else if (ev.keyCode == 40 /* DOWN */ || ev.keyCode == 74 /* j */) {
+  } else if ((ev.keyCode == 40 /* DOWN */ || ev.keyCode == 74 /* j */) &&
+             noModifiers(ev)) {
     if (this.adjustSelection_(1))
       ev.preventDefault();
-  } else if (ev.keyCode == 38 /* UP */ || ev.keyCode == 75 /* k */) {
+  } else if ((ev.keyCode == 38 /* UP */ || ev.keyCode == 75 /* k */) &&
+             noModifiers(ev)) {
     if (this.adjustSelection_(-1))
       ev.preventDefault();
-  } else if (ev.keyCode == 33 /* PAGEUP */) {
+  } else if (ev.keyCode == 33 /* PAGEUP */ && noModifiers(ev)) {
     // We implement pageup, etc. ourselves too. I'd like to use the
     // browser's, but we want to call clampSelectionToScreen_ on
     // keyboard scrolls, but not on mouse scrolls, and we can't
     // distinguish those from the scroll handler.
     ev.preventDefault();
     this.scrollPage_(true);
-  } else if (ev.keyCode == 34 /* PAGEDOWN */) {
+  } else if (ev.keyCode == 34 /* PAGEDOWN */ && noModifiers(ev)) {
     ev.preventDefault();
     this.scrollPage_(false);
-  } else if (ev.keyCode == 32 /* SPACE */) {
+  } else if (ev.keyCode == 32 /* SPACE */ && noModifiers(ev, {shiftKey: 1})) {
     ev.preventDefault();
     this.scrollPage_(ev.shiftKey);
   }
