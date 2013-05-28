@@ -243,7 +243,7 @@ MessageView.prototype.reset_ = function() {
   this.loadingBelow_.scrollIntoView();
 };
 
-MessageView.prototype.scrollToMessage = function(id, bootstrap) {
+MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
   if (id in this.messageToIndex_) {
     // Easy case: if the message is in our current view, we just jump
     // to it.
@@ -261,6 +261,7 @@ MessageView.prototype.scrollToMessage = function(id, bootstrap) {
     this.tailBelowOffset_ = 0;
     this.tailBelow_.expandTo(TARGET_BUFFER);
     this.appendMessages_([bootstrap], false);
+    this.nodes_[0].scrollIntoView(alignWithTop);
   } else {
     this.tailBelow_ = this.model_.newTailInclusive(
       id, this.appendMessages_.bind(this));
@@ -344,7 +345,9 @@ MessageView.prototype.ensureSelectionVisible_ = function() {
   if (node == null) {
     // We scrolled the selection off-screen. But we have seen it, so
     // |selectedMessage_| can't be null.
-    this.scrollToMessage(this.selectedMessage_.id, this.selectedMessage_);
+    this.scrollToMessage(this.selectedMessage_.id,
+                         this.selectedMessage_,
+                         this.selected_ <= this.listOffset_);
     return true;
   }
   var b = node.getBoundingClientRect();
