@@ -229,6 +229,8 @@ MessageView.prototype.reset_ = function() {
   this.nodes_ = [];
 
   this.selected_ = null;  // The global index of the selected message.
+  this.selectedMessage_ = null;  // The message dictionary. null if we
+                                 // never say the message.
 
   this.messageToIndex_ = {};  // Map id to global index.
 
@@ -242,7 +244,7 @@ MessageView.prototype.reset_ = function() {
   this.loadingBelow_.scrollIntoView();
 };
 
-MessageView.prototype.scrollToMessage = function(id) {
+MessageView.prototype.scrollToMessage = function(id, bootstrap) {
   if (id in this.messageToIndex_) {
     // Easy case: if the message is in our current view, we just jump
     // to it.
@@ -255,10 +257,17 @@ MessageView.prototype.scrollToMessage = function(id) {
   this.reset_();
   this.selectMessage_(0);
 
-  this.tailBelow_ = this.model_.newTailInclusive(
-    id, this.appendMessages_.bind(this));
-  this.tailBelowOffset_ = 0;
-  this.tailBelow_.expandTo(TARGET_BUFFER);
+  if (bootstrap) {
+    this.tailBelow_ = this.model_.newTail(id, this.appendMessages_.bind(this));
+    this.tailBelowOffset_ = 0;
+    this.tailBelow_.expandTo(TARGET_BUFFER);
+    this.appendMessages_([bootstrap], false);
+  } else {
+    this.tailBelow_ = this.model_.newTailInclusive(
+      id, this.appendMessages_.bind(this));
+    this.tailBelowOffset_ = 0;
+    this.tailBelow_.expandTo(TARGET_BUFFER);
+  }
 
   this.tailAbove_ = this.model_.newReverseTail(
     id, this.prependMessages_.bind(this));
@@ -326,16 +335,18 @@ MessageView.prototype.scrollToBottom = function(id) {
 MessageView.prototype.ensureSelectionVisible_ = function() {
   var bounds = this.container_.getBoundingClientRect();
 
-  if (this.selected_ == null) {
-    // If we have no selection, pick the one in view.
-    this.selected_ = this.findTopMessage_(bounds);
+  if (this.selectedMessage_ == null) {
+    // If we never saw the selection, warp it somewhere else. We don't
+    // even know the message id.
+    this.selectMessage_(this.findTopMessage_(bounds));
   }
 
   var node = this.selectedNode_();
   if (node == null) {
-    // We scrolled the selection off-screen. Get the message id (!!!)
-    // and scrollToMessage.
-    throw "NOT IMPLEMENTED!";
+    // We scrolled the selection off-screen. But we have seen it, so
+    // |selectedMessage_| can't be null.
+    this.scrollToMessage(this.selectedMessage_.id, this.selectedMessage_);
+    return true;
   }
   var b = node.getBoundingClientRect();
 
@@ -361,11 +372,16 @@ MessageView.prototype.selectMessage_ = function(selected) {
     if (node)
       node.classList.remove("message-selected");
   }
+  if (this.selected_ !== selected)
+    this.selectedMessage_ = null;
   this.selected_ = selected;
   if (this.selected_ != null) {
-    var node = this.selectedNode_();
-    if (node)
+    var idx = this.selected_ - this.listOffset_;
+    if (0 <= idx && idx < this.nodes_.length) {
+      this.selectedMessage_ = this.messages_[idx];
+      var node = this.nodes_[idx];
       node.classList.add("message-selected");
+    }
   }
 };
 
