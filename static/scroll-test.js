@@ -264,6 +264,14 @@ MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
     this.tailBelow_.expandTo(TARGET_BUFFER);
     this.appendMessages_([bootstrap], false);
     this.nodes_[0].scrollIntoView(alignWithTop);
+    // Always anchor the top if the message is too big to fit on
+    // screen.
+    //
+    // TODO(davidben): Share code with the similar bit in
+    // ensureSelectionVisible_?
+    if (this.nodes_[0].getBoundingClientRect().top <
+        this.container_.getBoundingClientRect().top)
+      this.nodes_[0].scrollIntoView(true);
   } else {
     this.tailBelow_ = this.model_.newTailInclusive(
       id, this.appendMessages_.bind(this));
