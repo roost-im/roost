@@ -6,7 +6,7 @@ var zephyr = require('zephyr');
 
 var conf = require('./lib/config.js');
 var db = require('./lib/db.js');
-var MessageQueue = require('./lib/messagequeue.js');
+var MessageQueue = require('./lib/messagequeue.js').MessageQueue;
 var zuser = require('./lib/zuser.js');
 
 zephyr.openPort();
