@@ -573,14 +573,12 @@ MessageView.prototype.checkBuffers_ = function() {
     // to keep re-triggering layout with
     // getBoundingClientRect. Unfortunately, this isn't the cause of
     // us getting stuck.
-    var heightLost = 0;
     var maxHeight = oldHeight - this.container_.scrollTop - bounds.height;
+    var top = this.nodes_[0].getBoundingClientRect().top;
     for (var num = 0; num < maxRemoved; num++) {
-      // FIXME: What if there are margins?
-      var b = this.nodes_[num].getBoundingClientRect();
-      if (heightLost + b.height >= maxHeight)
+      var b = this.nodes_[num + 1].getBoundingClientRect();
+      if (b.top - top >= maxHeight)
         break;
-      heightLost += b.height;
     }
 
     for (var i = 0; i < num; i++) {
