@@ -7,7 +7,6 @@ var db = require('./lib/db.js');
 var Subscriber = require('./lib/subscriber.js').Subscriber;
 
 var subscriber = new Subscriber();
-subscriber.openPort();
 
 var app = express();
 
@@ -93,18 +92,10 @@ var server = http.createServer(app);
 var connectionManager = connections.listen(server, subscriber);
 
 // Load active subscriptions from the database.
-console.log('Loading active subscriptions');
-db.loadActiveSubs().then(function(subs) {
-  subs = subs.map(function(sub) {
-    if (sub[1] === null)
-      return [sub[0], '*', sub[2]];
-    return sub;
-  });
-  console.log('Subscribing to %d triples', subs.length);
-  return subscriber.subscribeTo(subs);
-}).then(function() {
+console.log('Starting subscriber...');
+subscriber.start().then(function() {
   // And now we're ready to start doing things.
-  console.log('Subscribed');
+  console.log('...started');
   server.listen(conf.get('port'), conf.get('ip'), function() {
     var addy = server.address();
     console.log('running on http://' + addy.address + ":" + addy.port);
@@ -115,7 +106,7 @@ db.loadActiveSubs().then(function(subs) {
 ['SIGINT', 'SIGQUIT', 'SIGTERM'].forEach(function(sig) {
   process.on(sig, function() {
     console.log('Canceling subscriptions...');
-    subscriber.cancelSubscriptions().then(function() {
+    subscriber.shutdown().then(function() {
       console.log('Bye');
       process.exit();
     }).done();
