@@ -496,16 +496,28 @@ MessageView.prototype.formatMessage_ = function(idx, msg) {
 
   var a = document.createElement("a");
   a.href = "#msg-" + msg.id;
-  a.textContent = msg.number;
+  a.textContent = "[LINK]";
+
+  var number = msg.number;
+  if (number == undefined) {
+    // Hash the class + instance, I guess...
+    number = 0;
+    var s = msg.class + "|" + msg.instance;
+    for (var i = 0; i < s.length; i++) {
+      // Dunno, borrowed from some random thing on the Internet that
+      // claims to be Java's.
+      number = ((number << 5) - number + s.charCodeAt(i)) | 0;
+    }
+  }
 
   pre.appendChild(a);
   pre.appendChild(document.createTextNode(
-    ": " +
+    " " +
       msg.class + " / " + msg.instance + " / " + msg.sender + "  " +
       new Date(msg.time).toString() + "\n" +
       indented));
   pre.className = "message";
-  pre.style.color = COLORS[((msg.number % COLORS.length) + COLORS.length) % COLORS.length];
+  pre.style.color = COLORS[((number % COLORS.length) + COLORS.length) % COLORS.length];
 
   pre.addEventListener("click",
                        this.onClickMessage_.bind(this, idx));
@@ -850,8 +862,9 @@ MessageView.prototype.onClickMessage_ = function(idx, ev) {
 
 var messageView;  // For debugging.
 $(function() {
-  messageView = new MessageView(new MockMessageModel(1000),
-                                document.getElementById("messagelist"));
+  //  var model = new MockMessageModel(1000);
+  var model = new MessageModel("/api", io.connect());
+  messageView = new MessageView(model, document.getElementById("messagelist"));
   document.getElementById("messagelist").focus();
 
   if (/#msg-/.test(location.hash)) {
