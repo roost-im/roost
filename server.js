@@ -1,9 +1,8 @@
 var express = require('express');
 var http = require('http');
-var Q = require('q');
-var socketIo = require('socket.io');
 
 var conf = require('./lib/config.js');
+var connections = require('./lib/connections.js');
 var db = require('./lib/db.js');
 var Subscriber = require('./lib/subscriber.js').Subscriber;
 
@@ -91,23 +90,7 @@ app.get('/api/messages', function(req, res) {
 app.use(express.static(__dirname + '/static'));
 
 var server = http.createServer(app);
-var io = socketIo.listen(server);
-
-var connections = { };
-
-subscriber.on('message', function(msg) {
-  // Forward to clients.
-  for (var id in connections) {
-    connections[id].emit('message', msg);
-  }
-});
-
-io.sockets.on('connection', function(socket) {
-  connections[socket.id] = socket;
-  socket.on('end', function() {
-    delete connections[socket.id];
-  });
-});
+var connectionManager = connections.listen(server, subscriber);
 
 // Load active subscriptions from the database.
 console.log('Loading active subscriptions');
