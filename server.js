@@ -4,6 +4,7 @@ var http = require('http');
 var conf = require('./lib/config.js');
 var connections = require('./lib/connections.js');
 var db = require('./lib/db.js');
+var msgid = require('./lib/msgid.js');
 var Subscriber = require('./lib/subscriber.js').Subscriber;
 
 var subscriber = new Subscriber();
@@ -72,14 +73,21 @@ app.post('/api/unsubscribe', function(req, res) {
 });
 
 app.get('/api/messages', function(req, res) {
+  var offset = stringOrNull(req.query.offset);
+  if (offset != null)
+    offset = msgid.unseal(offset);
   db.getMessages(
-    HACK_USER, stringOrNull(req.query.offset), {
+    HACK_USER, stringOrNull(offset), {
       inclusive: Boolean(req.query.inclusive|0),
       reverse: Boolean(req.query.reverse|0),
       limit: req.query.count|0
     }
-  ).then(function(messages) {
-    res.json(200, messages);
+  ).then(function(result) {
+    result.messages.forEach(function(msg) {
+      msg.id = msgid.seal(msg.id);
+    });
+    // TODO(davidben): Forward the reachedEnd state?
+    res.json(200, result.messages);
   }, function(err) {
     res.send(500);
     console.error(err);

@@ -138,12 +138,11 @@
       }
 
       var socket = io.connect("");
-      socket.on('message', function(msg) {
-        console.log(msg);
-        log(msg.class + " / " + msg.instance + " / " +
-            msg.sender + " " + new Date(msg.time) + "\n" +
-            msg.message + "\n");
+      socket.on("messages", function(id, msgs, isDone) {
+        console.log(id, isDone, msgs.length);
       });
+      // socket.emit("new-tail", 0, null, false);
+      // socket.emit("extend-tail", 0, 10);
     </script>
   </body>
 </html>
