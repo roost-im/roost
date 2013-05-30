@@ -40,7 +40,7 @@ app.post('/api/subscribe', function(req, res) {
   // TODO(davidben): Permissions checking.
   var recipient = String(req.body.recipient);
   subscriber.subscribeTo(
-    [klass, (instance === null ? '*' : instance), recipient]
+    [[klass, (instance === null ? '*' : instance), recipient]]
   ).then(function() {
     // Save the subscription in the database.
     return db.addUserSubscription(HACK_USER, klass, instance, '');
