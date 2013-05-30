@@ -6,7 +6,7 @@ var zephyr = require('zephyr');
 
 var conf = require('./lib/config.js');
 var db = require('./lib/db.js');
-var MessageQueue = require('./lib/messagequeue.js').MessageQueue;
+var queue = require('./lib/queue.js');
 var zuser = require('./lib/zuser.js');
 
 zephyr.openPort();
@@ -100,7 +100,7 @@ var connections = { };
 
 // Dedicated db connection for the subscriber.
 var dbConnection = db.createConnection();
-var messageQueue = new MessageQueue(function(msg) {
+var messageQueue = new queue.JobQueue(function(msg) {
   // Save to the database.
   return dbConnection.saveMessage(msg).then(function(ret) {
     // We didn't save the message.
@@ -156,7 +156,7 @@ zephyr.on('notice', function(notice) {
     msg.message = notice.body[0] || '';
   }
 
-  messageQueue.addMessage(msg);
+  messageQueue.addJob(msg);
 });
 
 io.sockets.on('connection', function(socket) {
