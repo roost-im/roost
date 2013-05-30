@@ -90,12 +90,10 @@ MessageTail.prototype.close = function() {
 MessageTail.prototype.createTail_ = function() {
   this.tailId_ = nextTailId++;
   this.messagesSentRecent_ = 0;  // New tail, so we reset offset.
-  console.log(this.tailId_, this.lastSent_, this.inclusive_);
   this.model_.socket().emit("new-tail",
                             this.tailId_, this.lastSent_, this.inclusive_);
 };
 MessageTail.prototype.onMessages_ = function(id, msgs, isDone) {
-  console.log(id, this.tailId_);
   if (id != this.tailId_)
     return;
   if (msgs.length) {
