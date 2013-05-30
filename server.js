@@ -74,8 +74,12 @@ app.post('/api/unsubscribe', function(req, res) {
 
 app.get('/api/messages', function(req, res) {
   var offset = stringOrNull(req.query.offset);
-  if (offset != null)
+  if (offset) {
     offset = msgid.unseal(offset);
+  } else {
+    // Punt the empty string too.
+    offset = null;
+  }
   db.getMessages(
     HACK_USER, stringOrNull(offset), {
       inclusive: Boolean(req.query.inclusive|0),
@@ -86,8 +90,7 @@ app.get('/api/messages', function(req, res) {
     result.messages.forEach(function(msg) {
       msg.id = msgid.seal(msg.id);
     });
-    // TODO(davidben): Forward the reachedEnd state?
-    res.json(200, result.messages);
+    res.json(200, result);
   }, function(err) {
     res.send(500);
     console.error(err);
