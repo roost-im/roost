@@ -2,14 +2,13 @@ var express = require('express');
 var http = require('http');
 var Q = require('q');
 var socketIo = require('socket.io');
-var zephyr = require('zephyr');
 
 var conf = require('./lib/config.js');
 var db = require('./lib/db.js');
-var queue = require('./lib/queue.js');
-var zuser = require('./lib/zuser.js');
+var Subscriber = require('./lib/subscriber.js').Subscriber;
 
-zephyr.openPort();
+var subscriber = new Subscriber();
+subscriber.openPort();
 
 var app = express();
 
@@ -41,10 +40,8 @@ app.post('/api/subscribe', function(req, res) {
   var instance = stringOrNull(req.body.instance);
   // TODO(davidben): Permissions checking.
   var recipient = String(req.body.recipient);
-  Q.nfcall(
-    zephyr.subscribeTo, [
-      [klass, (instance === null ? '*' : instance), recipient]
-    ]
+  subscriber.subscribeTo(
+    [klass, (instance === null ? '*' : instance), recipient]
   ).then(function() {
     // Save the subscription in the database.
     return db.addUserSubscription(HACK_USER, klass, instance, '');
@@ -98,65 +95,11 @@ var io = socketIo.listen(server);
 
 var connections = { };
 
-// Dedicated db connection for the subscriber.
-var dbConnection = db.createConnection();
-var messageQueue = new queue.JobQueue(function(msg) {
-  // Save to the database.
-  return dbConnection.saveMessage(msg).then(function(ret) {
-    // We didn't save the message.
-    if (!ret)
-      return;
-
-    msg.id = ret.id;
-    console.log('Received by', ret.userIds);
-
-    // Forward to clients.
-    for (var id in connections) {
-      connections[id].emit('message', msg);
-    }
-  });
-});
-zephyr.on('notice', function(notice) {
-  // Skip the random ACKs.
-  if (notice.kind == zephyr.HMACK ||
-      notice.kind == zephyr.SERVACK ||
-      notice.kind == zephyr.SERVNAK) {
-    return;
+subscriber.on('message', function(msg) {
+  // Forward to clients.
+  for (var id in connections) {
+    connections[id].emit('message', msg);
   }
-
-  console.log("%s / %s / %s %s [%s] (%s)\n%s",
-              notice.class, notice.instance, notice.sender,
-              (notice.checkedAuth == zephyr.ZAUTH_YES) ?
-              "AUTHENTIC" : "UNAUTHENTIC",
-              notice.opcode, notice.body[0], notice.body[1]);
-
-  var msg = {
-    time: notice.time.getTime(),
-    receiveTime: (new Date()).getTime(),
-    class: notice.class,
-    instance: notice.instance,
-    sender: notice.sender,
-    recipient: notice.recipient,
-    realm: zuser.realm(notice.recipient),
-    auth: notice.checkedAuth,
-    opcode: notice.opcode
-  };
-  // TODO(davidben): Pull in the full logic from BarnOwl's
-  // owl_zephyr_get_message? It checks on default formats and the
-  // like.
-  //
-  // How much of this processing should be server-side and how much
-  // client-side? If we want to be able to search on the body, that
-  // suggests it should be in the server.
-  if (notice.body.length > 1) {
-    msg.signature = notice.body[0];
-    msg.message = notice.body[1];
-  } else {
-    msg.signature = '';
-    msg.message = notice.body[0] || '';
-  }
-
-  messageQueue.addJob(msg);
 });
 
 io.sockets.on('connection', function(socket) {
@@ -175,7 +118,7 @@ db.loadActiveSubs().then(function(subs) {
     return sub;
   });
   console.log('Subscribing to %d triples', subs.length);
-  return Q.nfcall(zephyr.subscribeTo, subs);
+  return subscriber.subscribeTo(subs);
 }).then(function() {
   // And now we're ready to start doing things.
   console.log('Subscribed');
@@ -189,11 +132,9 @@ db.loadActiveSubs().then(function(subs) {
 ['SIGINT', 'SIGQUIT', 'SIGTERM'].forEach(function(sig) {
   process.on(sig, function() {
     console.log('Canceling subscriptions...');
-    zephyr.cancelSubscriptions(function(err) {
-      if (err)
-        console.log(err.code, err.message);
+    subscriber.cancelSubscriptions().then(function() {
       console.log('Bye');
       process.exit();
-    });
+    }).done();
   });
 });
