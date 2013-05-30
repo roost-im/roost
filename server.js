@@ -20,7 +20,7 @@ function stringOrNull(arg) {
 }
 var HACK_USER = 1;
 
-app.get('/api/subscriptions', function(req, res) {
+app.get('/api/v1/subscriptions', function(req, res) {
   db.getUserSubscriptions(HACK_USER).then(function(subs) {
     res.json(200, subs);
   }, function(err) {
@@ -29,7 +29,7 @@ app.get('/api/subscriptions', function(req, res) {
   }).done();
 });
 
-app.post('/api/subscribe', function(req, res) {
+app.post('/api/v1/subscribe', function(req, res) {
   if (!req.body.class) {
     res.send(400, 'class parameter required');
     return;
@@ -52,7 +52,7 @@ app.post('/api/subscribe', function(req, res) {
   }).done();
 });
 
-app.post('/api/unsubscribe', function(req, res) {
+app.post('/api/v1/unsubscribe', function(req, res) {
   if (!req.body.class) {
     res.send(400, 'class parameter required');
     return;
@@ -72,7 +72,7 @@ app.post('/api/unsubscribe', function(req, res) {
   }).done();
 });
 
-app.get('/api/messages', function(req, res) {
+app.get('/api/v1/messages', function(req, res) {
   var offset = stringOrNull(req.query.offset);
   if (offset) {
     offset = msgid.unseal(offset);

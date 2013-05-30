@@ -146,7 +146,7 @@ MockMessageTail.prototype.fireRequest_ = function(immediate) {
 var messageView;  // For debugging.
 $(function() {
   //  var model = new MockMessageModel(1000);
-  var model = new MessageModel("/api", io.connect());
+  var model = new MessageModel("/api/v1", io.connect());
   messageView = new MessageView(model, document.getElementById("messagelist"));
   document.getElementById("messagelist").focus();
 

@@ -32,7 +32,7 @@
     <script>
       (function() {
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", "/api/subscriptions", true);
+        xhr.open("GET", "/api/v1/subscriptions", true);
         xhr.onreadystatechange = function(ev) {
           if (this.readyState != 4) return;
           if (this.status == 200) {
@@ -62,7 +62,7 @@
         var msgRecipient = '';
 
         var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/subscribe", true);
+        xhr.open("POST", "/api/v1/subscribe", true);
         xhr.setRequestHeader("Content-Type", "application/json");
         // Pffft.
         xhr.onreadystatechange = function(ev) {
@@ -89,7 +89,7 @@
         var msgRecipient = '';
 
         var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/unsubscribe", true);
+        xhr.open("POST", "/api/v1/unsubscribe", true);
         xhr.setRequestHeader("Content-Type", "application/json");
         // Pffft.
         xhr.onreadystatechange = function(ev) {
@@ -114,7 +114,7 @@
 
         var xhr = new XMLHttpRequest();
         xhr.open("GET",
-                 "/api/messages?offset=" + encodeURIComponent(offset) + "&count=10",
+                 "/api/v1/messages?offset=" + encodeURIComponent(offset) + "&count=10",
                  true);
         xhr.onreadystatechange = function(ev) {
           if (this.readyState != 4) return;
