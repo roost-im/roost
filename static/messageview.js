@@ -542,6 +542,8 @@ SelectionTracker.prototype.selectMessage = function(id) {
     if (oldNode)
       oldNode.classList.remove("message-selected");
   }
+  if (this.selected_ != id)
+    this.selectedMessage_ = null;
   this.selected_ = id;
   // Update the display and everything else.
   this.onCacheChanged_();
