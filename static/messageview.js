@@ -148,10 +148,20 @@ MessageView.prototype.reset_ = function() {
 };
 
 MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
+  if (bootstrap == undefined || alignWithTop == undefined)
+    alignWithTop = true;
+
   if (id in this.messageToIndex_) {
     // Easy case: if the message is in our current view, we just jump
     // to it.
-    this.nodes_[this.messageToIndex_[id] - this.listOffset_].scrollIntoView();
+    var node = this.nodes_[this.messageToIndex_[id] - this.listOffset_];
+    node.scrollIntoView(alignWithTop);
+    if (!alignWithTop) {
+      if (node.getBoundingClientRect().top <
+          this.container_.getBoundingClientRect().top) {
+        node.scrollIntoView(true);
+      }
+    }
     return;
   }
 
@@ -167,12 +177,11 @@ MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
     this.nodes_[0].scrollIntoView(alignWithTop);
     // Always anchor the top if the message is too big to fit on
     // screen.
-    //
-    // TODO(davidben): Share code with the similar bit in
-    // ensureSelectionVisible_?
-    if (this.nodes_[0].getBoundingClientRect().top <
-        this.container_.getBoundingClientRect().top) {
-      this.nodes_[0].scrollIntoView(true);
+    if (!alignWithTop) {
+      if (this.nodes_[0].getBoundingClientRect().top <
+          this.container_.getBoundingClientRect().top) {
+        this.nodes_[0].scrollIntoView(true);
+      }
     }
   } else {
     this.tailBelow_ = this.model_.newTailInclusive(
@@ -685,9 +694,7 @@ SelectionTracker.prototype.ensureSelectionVisible_ = function() {
     // We scrolled the selection off-screen. But we have seen it, so
     // scroll there.
     //
-    // TODO(davidben): This is a pretty poor approximation of the
-    // alignWithTop behavior, since we don't know how to compare
-    // messages.
+    // TODO(davidben): Comparing receiveTime is rather a hack.
     var alignWithTop = true;
     var firstMessage = this.messageView_.cachedMessages()[0];
     if (firstMessage !== undefined) {
@@ -697,14 +704,15 @@ SelectionTracker.prototype.ensureSelectionVisible_ = function() {
       this.selectedMessage_.id, this.selectedMessage_, alignWithTop);
     return;
   }
+
   // Scroll the message into view if not there.
   var b = node.getBoundingClientRect();
-  if (b.bottom > bounds.bottom) {
-    node.scrollIntoView(false);
-    b = node.getBoundingClientRect();
-  }
   if (b.top < bounds.top) {
-    node.scrollIntoView(true);
+    this.messageView_.scrollToMessage(
+      this.selectedMessage_.id, this.selectedMessage_, true);
+  } else if (b.bottom > bounds.bottom) {
+    this.messageView_.scrollToMessage(
+      this.selectedMessage_.id, this.selectedMessage_, false);
   }
 };
 
