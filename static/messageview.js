@@ -148,8 +148,16 @@ MessageView.prototype.reset_ = function() {
 };
 
 MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
+  // TODO(davidben): This function is pretty wonky. Really it should
+  // just be two functions.
   if (bootstrap == undefined || alignWithTop == undefined)
     alignWithTop = true;
+
+  if (bootstrap && !(id in this.messageToIndex_)) {
+    this.reset_();
+    // appendMessages_ will trigger all the tails we need.
+    this.appendMessages_([bootstrap], false);
+  }
 
   if (id in this.messageToIndex_) {
     // Easy case: if the message is in our current view, we just jump
@@ -169,33 +177,15 @@ MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
   // reference.
   this.reset_();
 
-  // Create this BEFORE the synchronous call to
-  // appendMessages_. Otherwise bad things happen.
   this.tailAbove_ = this.model_.newReverseTail(
     id, this.prependMessages_.bind(this));
-  this.tailAboveOffset_ = 0;  // The global index of the tail reference.
+  this.tailAboveOffset_ = 0;
   this.tailAbove_.expandTo(TARGET_BUFFER);
 
-  if (bootstrap) {
-    this.tailBelow_ = this.model_.newTail(id, this.appendMessages_.bind(this));
-    this.tailBelowOffset_ = 0;
-    this.tailBelow_.expandTo(TARGET_BUFFER);
-    this.appendMessages_([bootstrap], false);
-    this.nodes_[0].scrollIntoView(alignWithTop);
-    // Always anchor the top if the message is too big to fit on
-    // screen.
-    if (!alignWithTop) {
-      if (this.nodes_[0].getBoundingClientRect().top <
-          this.container_.getBoundingClientRect().top) {
-        this.nodes_[0].scrollIntoView(true);
-      }
-    }
-  } else {
-    this.tailBelow_ = this.model_.newTailInclusive(
-      id, this.appendMessages_.bind(this));
-    this.tailBelowOffset_ = 0;
-    this.tailBelow_.expandTo(TARGET_BUFFER);
-  }
+  this.tailBelow_ = this.model_.newTailInclusive(
+    id, this.appendMessages_.bind(this));
+  this.tailBelowOffset_ = 0;
+  this.tailBelow_.expandTo(TARGET_BUFFER);
 };
 
 MessageView.prototype.scrollToTop = function(id) {
