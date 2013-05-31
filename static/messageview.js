@@ -169,6 +169,13 @@ MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
   // reference.
   this.reset_();
 
+  // Create this BEFORE the synchronous call to
+  // appendMessages_. Otherwise bad things happen.
+  this.tailAbove_ = this.model_.newReverseTail(
+    id, this.prependMessages_.bind(this));
+  this.tailAboveOffset_ = 0;  // The global index of the tail reference.
+  this.tailAbove_.expandTo(TARGET_BUFFER);
+
   if (bootstrap) {
     this.tailBelow_ = this.model_.newTail(id, this.appendMessages_.bind(this));
     this.tailBelowOffset_ = 0;
@@ -189,11 +196,6 @@ MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
     this.tailBelowOffset_ = 0;
     this.tailBelow_.expandTo(TARGET_BUFFER);
   }
-
-  this.tailAbove_ = this.model_.newReverseTail(
-    id, this.prependMessages_.bind(this));
-  this.tailAboveOffset_ = 0;  // The global index of the tail reference.
-  this.tailAbove_.expandTo(TARGET_BUFFER);
 };
 
 MessageView.prototype.scrollToTop = function(id) {
