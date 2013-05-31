@@ -687,12 +687,12 @@ SelectionTracker.prototype.ensureSelectionVisible_ = function() {
   if (node == null) {
     // We scrolled the selection off-screen. But we have seen it, so
     // scroll there.
-    //
-    // TODO(davidben): Comparing receiveTime is rather a hack.
     var alignWithTop = true;
     var firstMessage = this.messageView_.cachedMessages()[0];
     if (firstMessage !== undefined) {
-      alignWithTop = this.selectedMessage_.receiveTime < firstMessage.receiveTime;
+      alignWithTop =
+        this.messageView_.model_.compareMessages(this.selectedMessage_,
+                                                 firstMessage) < 0;
     }
     this.messageView_.scrollToMessage(
       this.selectedMessage_.id, this.selectedMessage_, alignWithTop);

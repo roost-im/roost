@@ -78,6 +78,9 @@ MockMessageModel.prototype.newReverseTail = function(start, cb) {
     reverse: true
   });
 };
+MockMessageModel.prototype.compareMessages = function(a, b) {
+  return a.number - b.number;
+};
 
 function MockMessageTail(model, start, cb, opts) {
   this.model_ = model;
@@ -145,8 +148,8 @@ MockMessageTail.prototype.fireRequest_ = function(immediate) {
 
 var messageView, selectionTracker;  // For debugging.
 $(function() {
-  //  var model = new MockMessageModel(1000);
-  var model = new MessageModel("/api/v1", io.connect());
+    var model = new MockMessageModel(1000);
+  //var model = new MessageModel("/api/v1", io.connect());
   messageView = new MessageView(model, document.getElementById("messagelist"));
   selectionTracker = new SelectionTracker(messageView);
   document.getElementById("messagelist").focus();

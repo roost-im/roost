@@ -50,6 +50,13 @@ MessageModel.prototype.newTail = function(start, cb) {
 MessageModel.prototype.newReverseTail = function(start, cb) {
   return new MessageReverseTail(this, start, cb);
 };
+// This function is NOT meant to be that authoritative. It's just
+// because some places in the message view would find it handle to be
+// able to compare messages to each other and opaque message ids as a
+// data model make this difficult.
+MessageModel.prototype.compareMessages = function(a, b) {
+  return a.receiveTime - b.receiveTime;
+};
 
 // TODO(davidben): This really really should be state that's attached
 // to the socket. Wrap io.socket's objects in some wrapper that
