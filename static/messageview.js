@@ -697,18 +697,14 @@ SelectionTracker.prototype.ensureSelectionVisible_ = function() {
       this.selectedMessage_.id, this.selectedMessage_, alignWithTop);
     return;
   }
-  var b = node.getBoundingClientRect();
-
   // Scroll the message into view if not there.
-  if (b.top < bounds.top) {
-    node.scrollIntoView(true);
-    return;
-  }
+  var b = node.getBoundingClientRect();
   if (b.bottom > bounds.bottom) {
     node.scrollIntoView(false);
     b = node.getBoundingClientRect();
-    if (b.top < bounds.top)
-      node.scrollIntoView(true);
+  }
+  if (b.top < bounds.top) {
+    node.scrollIntoView(true);
   }
 };
 
