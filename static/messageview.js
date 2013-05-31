@@ -23,7 +23,21 @@ function clamp(a, b, c) {
   return Math.max(a, Math.min(b, c));
 }
 
+function matchKey(ev, keyCode, mods) {
+  if (ev.keyCode != keyCode)
+    return false;
+  mods = mods || { };
+  var modifiers = ["altKey", "altGraphKey", "ctrlKey", "metaKey", "shiftKey"];
+  for (var i = 0; i < modifiers.length; i++) {
+    if (Boolean(ev[modifiers[i]]) != Boolean(mods[modifiers[i]]))
+      return false;
+  }
+  return true;
+}
+
 function MessageView(model, container) {
+  io.EventEmitter.call(this);
+
   this.model_ = model;
   this.container_ = container;
   // Make this element focusable. This is needed so that you can
@@ -69,6 +83,40 @@ function MessageView(model, container) {
   this.container_.addEventListener("scroll", this.checkBuffers_.bind(this));
   this.container_.addEventListener("keydown", this.onKeydown_.bind(this));
 }
+MessageView.prototype = Object.create(io.EventEmitter.prototype);
+
+MessageView.prototype.container = function() {
+  return this.container_;
+};
+
+MessageView.prototype.cachedMessages = function() {
+  return this.messages_;
+};
+
+MessageView.prototype.cachedNodes = function() {
+  return this.nodes_;
+};
+
+MessageView.prototype.getCacheIndex = function(id) {
+  if (id in this.messageToIndex_) {
+    return this.messageToIndex_[id] - this.listOffset_;
+  }
+  return null;
+};
+
+MessageView.prototype.getNode = function(id) {
+  var idx = this.getCacheIndex(id);
+  if (idx == null)
+    return null;
+  return this.nodes_[idx];
+};
+
+MessageView.prototype.getMessage = function(id) {
+  var idx = this.getCacheIndex(id);
+  if (idx == null)
+    return null;
+  return this.messages_[idx];
+};
 
 MessageView.prototype.reset_ = function() {
   // It's not visible. Blow everything away and start from
@@ -86,9 +134,6 @@ MessageView.prototype.reset_ = function() {
   this.listOffset_ = 0;  // The global index to the top of the list.
   this.messages_ = [];
   this.nodes_ = [];
-
-  this.selected_ = null;  // The global index of the selected message.
-  this.selectedMessage_ = null;  // null if we never saw the message.
 
   this.messageToIndex_ = {};  // Map id to global index.
 
@@ -113,7 +158,6 @@ MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
   // Otherwise, we reset the universe and use |id| as our new point of
   // reference.
   this.reset_();
-  this.selectMessage_(0);
 
   if (bootstrap) {
     this.tailBelow_ = this.model_.newTail(id, this.appendMessages_.bind(this));
@@ -152,7 +196,6 @@ MessageView.prototype.scrollToTop = function(id) {
   // Otherwise, we reset the universe and use |id| as our new point of
   // reference.
   this.reset_();
-  this.selectMessage_(0);
   // Blegh. Cut out the "Loading..." text now.
   this.setAtTop_(true);
   this.setAtBottom_(false);
@@ -175,7 +218,6 @@ MessageView.prototype.scrollToBottom = function(id) {
   if (this.atBottom_) {
     // Easy case: if the bottom is buffered, go there.
     this.container_.scrollTop = this.container_.scrollHeight;
-    this.selectMessage_(this.listOffset_ + this.messages_.length - 1);
     return;
   }
 
@@ -185,7 +227,6 @@ MessageView.prototype.scrollToBottom = function(id) {
   // Blegh. Cut out the "Loading..." text now.
   this.setAtTop_(false);
   this.setAtBottom_(true);
-  this.selectMessage_(-1);
 
   // We create one tail and lazily create the other one when we have a
   // reference point.
@@ -198,70 +239,6 @@ MessageView.prototype.scrollToBottom = function(id) {
   this.tailAboveOffset_ = 0;
   this.tailAbove_.expandTo(TARGET_BUFFER);
 };
-
-MessageView.prototype.ensureSelectionVisible_ = function() {
-  var bounds = this.container_.getBoundingClientRect();
-
-  if (this.selectedMessage_ == null) {
-    // If we never saw the selection, warp it somewhere else. We don't
-    // even know the message id.
-    this.selectMessage_(this.findTopMessage_(bounds));
-  }
-
-  var node = this.selectedNode_();
-  if (node == null) {
-    // We scrolled the selection off-screen. But we have seen it, so
-    // |selectedMessage_| can't be null.
-    this.scrollToMessage(this.selectedMessage_.id,
-                         this.selectedMessage_,
-                         this.selected_ <= this.listOffset_);
-    return true;
-  }
-  var b = node.getBoundingClientRect();
-
-  // Scroll the message into view if not there.
-  if (b.bottom < bounds.top + MARGIN_TOP) {
-    node.scrollIntoView(true);
-    return true;
-  }
-  if (b.top > bounds.bottom - MARGIN_BELOW) {
-    node.scrollIntoView(false);
-    b = node.getBoundingClientRect();
-    // Always anchor the top if the message is too big to fit on
-    // screen.
-    if (b.top < bounds.top)
-      node.scrollIntoView(true);
-    return true;
-  }
-};
-
-MessageView.prototype.selectMessage_ = function(selected) {
-  if (this.selected_ != null) {
-    var node = this.selectedNode_();
-    if (node)
-      node.classList.remove("message-selected");
-  }
-  if (this.selected_ !== selected)
-    this.selectedMessage_ = null;
-  this.selected_ = selected;
-  if (this.selected_ != null) {
-    var idx = this.selected_ - this.listOffset_;
-    if (0 <= idx && idx < this.nodes_.length) {
-      this.selectedMessage_ = this.messages_[idx];
-      var node = this.nodes_[idx];
-      node.classList.add("message-selected");
-    }
-  }
-};
-
-MessageView.prototype.selectedNode_ = function() {
-  if (this.selected_ == null)
-    return null;
-  var idx = this.selected_ - this.listOffset_;
-  if (idx < 0 || idx >= this.nodes_.length)
-    return null;
-  return this.nodes_[idx];
-}
 
 MessageView.prototype.setAtTop_ = function(atTop) {
   if (this.atTop_ == atTop) return;
@@ -294,7 +271,7 @@ MessageView.prototype.appendMessages_ = function(msgs, isDone) {
   this.setAtBottom_(isDone);
   // If we were waiting to select a message that hadn't arrived yet,
   // refresh that.
-  this.selectMessage_(this.selected_);
+  this.emit("cachechanged");
   this.checkBuffers_();
 };
 
@@ -340,7 +317,7 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
 
   // If we were waiting to select a message that hadn't arrived yet,
   // refresh that.
-  this.selectMessage_(this.selected_);
+  this.emit("cachechanged");
   this.checkBuffers_();
 };
 
@@ -379,89 +356,6 @@ MessageView.prototype.formatMessage_ = function(idx, msg) {
   pre.addEventListener("click",
                        this.onClickMessage_.bind(this, idx));
   return pre;
-};
-
-MessageView.prototype.findTopMessage_ = function(bounds) {
-  if (this.nodes_.length == 0)
-    return null;
-  var lo = 0;
-  var hi = this.nodes_.length - 1;
-  while (lo < hi) {
-    var mid = ((lo + hi) / 2) | 0;
-    var b = this.nodes_[mid].getBoundingClientRect();
-    // Find the first message which starts at or after the bounds.
-    if (b.top < bounds.top) {
-      lo = mid + 1;
-    } else {
-      hi = mid;
-    }
-  }
-  // It's possible the message we found starts very late, if the
-  // previous is long. In that case, prefer the previous one.
-  if (lo > 0 &&
-      this.nodes_[lo].getBoundingClientRect().top >=
-      (bounds.top + bounds.height/2)) {
-    lo--;
-  }
-  return this.listOffset_ + lo;
-};
-
-MessageView.prototype.findBottomMessage_ = function(bounds) {
-  if (this.nodes_.length == 0)
-    return null;
-  var lo = 0;
-  var hi = this.nodes_.length - 1;
-  while (lo < hi) {
-    var mid = ((lo + hi + 1) / 2) | 0;
-    var b = this.nodes_[mid].getBoundingClientRect();
-    // Find the first message which ends at or before the bounds.
-    if (b.bottom < bounds.bottom) {
-      lo = mid;
-    } else {
-      hi = mid - 1;
-    }
-  }
-  // It's possible the message we found ends very early, if the
-  // next is long. In that case, prefer the next one.
-  if (lo < this.nodes_.length - 2 &&
-      this.nodes_[lo].getBoundingClientRect().bottom <=
-      (bounds.top + bounds.height/2)) {
-    lo++;
-  }
-  return this.listOffset_ + lo;
-};
-
-MessageView.prototype.clampSelectionToScreen_ = function() {
-  var bounds = this.container_.getBoundingClientRect();
-  // There's nothing to do.
-  if (this.messages_.length == 0)
-    return false;
-
-  // There's no selection. Start from the top message and we'll go
-  // from there.
-  var selected = this.selected_;
-  if (selected == null) {
-    selected = this.listOffset_;
-  }
-
-  // Clamp the selection to the list.
-  selected = Math.min(this.listOffset_ + this.messages_.length - 1,
-                      selected);
-  selected = Math.max(this.listOffset_, selected);
-
-  // Move on-screen if off-screen
-  var b = this.nodes_[selected - this.listOffset_].getBoundingClientRect();
-  if (b.top <= bounds.top) {
-    selected = this.findTopMessage_(bounds);
-  } else if (b.bottom >= bounds.bottom) {
-    selected = this.findBottomMessage_(bounds);
-  }
-
-  if (this.selected_ !== selected) {
-    this.selectMessage_(selected);
-    return true;
-  }
-  return false;
 };
 
 // Return 1 if we need to expand below, -1 if we need to contract, and
@@ -593,14 +487,143 @@ MessageView.prototype.checkBuffers_ = function() {
   }
 };
 
-MessageView.prototype.adjustSelection_ = function(direction, scrollLongMessages) {
-  if (this.ensureSelectionVisible_())
+MessageView.prototype.onKeydown_ = function(ev) {
+  // Handle home/end keys ourselves. Instead of going to the bounds of
+  // the currently buffered view (totally meaningless), they go to the
+  // top/bottom of the full message list.
+  if (matchKey(ev, 36 /* HOME */) ||
+      matchKey(ev, 32 /* UP */, {metaKey:1})) {
+    ev.preventDefault();
+    this.scrollToTop();
+  } else if (matchKey(ev, 35 /* END */) ||
+             matchKey(ev, 40 /* DOWN */, {metaKey:1})) {
+    ev.preventDefault();
+    this.scrollToBottom();
+  }
+};
+
+MessageView.prototype.onClickMessage_ = function(idx, ev) {
+  this.emit("messageclick", idx - this.listOffset_);
+};
+
+// Split the selection logic out for sanity.
+function SelectionTracker(messageView) {
+  this.messageView_ = messageView;
+
+  this.selected_ = null;  // The id of the selected message.
+  this.selectedMessage_ = null;  // null if we never saw the message.
+
+  this.messageView_.on("cachechanged", this.onCacheChanged_.bind(this));
+  this.messageView_.container().addEventListener("keydown",
+                                                 this.onKeydown_.bind(this));
+};
+
+SelectionTracker.prototype.getSelectedNode_ = function() {
+  if (this.selected_ == null)
+    return null;
+  return this.messageView_.getNode(this.selected_);
+};
+
+SelectionTracker.prototype.selectMessage = function(id) {
+  if (this.selected_ != null) {
+    var oldNode = this.getSelectedNode_();
+    if (oldNode)
+      oldNode.classList.remove("message-selected");
+  }
+  this.selected_ = id;
+  // Update the display and everything else.
+  this.onCacheChanged_();
+};
+
+SelectionTracker.prototype.findTopMessage_ = function() {
+  var bounds = this.messageView_.container().getBoundingClientRect();
+  var nodes = this.messageView_.cachedNodes();
+  if (nodes.length == 0)
+    return null;
+  var lo = 0;
+  var hi = nodes.length - 1;
+  while (lo < hi) {
+    var mid = ((lo + hi) / 2) | 0;
+    var b = nodes[mid].getBoundingClientRect();
+    // Find the first message which starts at or after the bounds.
+    if (b.top < bounds.top) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  // It's possible the message we found starts very late, if the
+  // previous is long. In that case, prefer the previous one.
+  if (lo > 0 &&
+      nodes[lo].getBoundingClientRect().top >=
+      (bounds.top + bounds.height/2)) {
+    lo--;
+  }
+  return lo;
+};
+
+SelectionTracker.prototype.findBottomMessage_ = function() {
+  var bounds = this.messageView_.container().getBoundingClientRect();
+  var nodes = this.messageView_.cachedNodes();
+  if (nodes.length == 0)
+    return null;
+  var lo = 0;
+  var hi = nodes.length - 1;
+  while (lo < hi) {
+    var mid = ((lo + hi + 1) / 2) | 0;
+    var b = nodes[mid].getBoundingClientRect();
+    // Find the first message which ends at or before the bounds.
+    if (b.bottom < bounds.bottom) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  // It's possible the message we found ends very early, if the
+  // next is long. In that case, prefer the next one.
+  if (lo < nodes.length - 2 &&
+      nodes[lo].getBoundingClientRect().bottom <=
+      (bounds.top + bounds.height/2)) {
+    lo++;
+  }
+  return lo;
+};
+
+SelectionTracker.prototype.clampSelection_ = function(top) {
+  // If there is an on-screen selection, don't do anything.
+  if (this.selected_ != null) {
+    var node = this.getSelectedNode_();
+    if (node) {
+      var bounds = this.messageView_.container().getBoundingClientRect();
+      var b = node.getBoundingClientRect();
+      if (b.bottom > bounds.top && b.top < bounds.bottom)
+        return false;
+    }
+  }
+
+  // Otherwise, clamp to top or bottom.
+  var newIdx = top ? this.findTopMessage_() : this.findBottomMessage_();
+  if (newIdx == null)
+    return false;
+  this.selectMessage(this.messageView_.cachedMessages()[newIdx].id);
+  return true;
+};
+
+SelectionTracker.prototype.adjustSelection_ = function(direction,
+                                                       scrollLongMessages) {
+  // Clamp the selection.
+  if (this.clampSelection_(direction > 0))
     return true;
 
-  var node = this.selectedNode_();
+  // Get the currently selected node. Pretty sure this can only be
+  // null now with an empty messagelist, but let's be thorough.
+  if (this.selected_ == null)
+    return false;
+  var node = this.getSelectedNode_();
   if (node == null)
     return false;
-  var bounds = this.container_.getBoundingClientRect();
+
+  var bounds = this.messageView_.container().getBoundingClientRect();
   var b = node.getBoundingClientRect();
   // Scroll to show the corresponding edge of the message first.
   if (scrollLongMessages) {
@@ -610,107 +633,105 @@ MessageView.prototype.adjustSelection_ = function(direction, scrollLongMessages)
       return false;
   }
 
-  var newSelected = this.selected_ + direction;
-  if (newSelected - this.listOffset_ >= this.nodes_.length ||
-      newSelected - this.listOffset_ < 0)
+  var idx = this.messageView_.getCacheIndex(this.selected_);
+  if (idx == null) return false;  // Again, should not happen.
+  var newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= this.messageView_.cachedNodes().length)
     return false;  // There isn't a message to select.
 
   // TODO(davidben): This grew organically out of a handful of
   // experiments before settling on something similar to what BarnOwl
   // does anyway. It can probably be simplified.
-  this.selectMessage_(newSelected);
-  var newNode = this.selectedNode_();
-  if (newNode) {
-    // What it would take to get the top of the new message at the top
-    // of the screen.
-    var topScroll =
-      newNode.getBoundingClientRect().top -
-      this.topMarker_.getBoundingClientRect().top;
-    // What it would take to get to the goal ratio.
-    var goalScroll = topScroll - ((direction < 0) ?
-                                  (bounds.height * GOAL_RATIO_UP) :
-                                  (bounds.height * GOAL_RATIO_DOWN));
-    if ((direction < 0 && this.container_.scrollTop > goalScroll) ||
-        (direction > 0 && this.container_.scrollTop < goalScroll)) {
-      // What it would take to keep the top of the selected message fixed.
-      var fixedScroll = this.container_.scrollTop +
-        direction * node.getBoundingClientRect().height;
+  this.selectMessage(this.messageView_.cachedMessages()[newIdx].id);
+  var newNode = this.messageView_.cachedNodes()[newIdx];
 
-      // Pick the first, but don't move the top of the selected message
-      // much. However, make sure the top is visible.
-      var newScroll = Math.min(
-        clamp(fixedScroll - MAX_ARROW_SCROLL,
-              goalScroll,
-              fixedScroll + MAX_ARROW_SCROLL),
-        topScroll);
-      this.container_.scrollTop = newScroll;
-    }
-  } else {
-    // This shouldn't happen...
+  // What it would take to get the top of the new message at the top
+  // of the screen.
+  var topScroll =
+    newNode.getBoundingClientRect().top -
+    this.messageView_.topMarker_.getBoundingClientRect().top;
+  // What it would take to get to the goal ratio.
+  var goalScroll = topScroll - ((direction < 0) ?
+                                (bounds.height * GOAL_RATIO_UP) :
+                                (bounds.height * GOAL_RATIO_DOWN));
+  if ((direction < 0 && this.messageView_.container().scrollTop > goalScroll) ||
+      (direction > 0 && this.messageView_.container().scrollTop < goalScroll)) {
+    // What it would take to keep the top of the selected message fixed.
+    var fixedScroll = this.messageView_.container().scrollTop +
+      direction * node.getBoundingClientRect().height;
+
+    // Pick the first, but don't move the top of the selected message
+    // much. However, make sure the top is visible.
+    var newScroll = Math.min(
+      clamp(fixedScroll - MAX_ARROW_SCROLL,
+            goalScroll,
+            fixedScroll + MAX_ARROW_SCROLL),
+      topScroll);
+    this.messageView_.container().scrollTop = newScroll;
   }
   return true;
 };
 
-MessageView.prototype.scrollPage_ = function(up) {
-  if (this.ensureSelectionVisible_())
+SelectionTracker.prototype.ensureSelectionVisible_ = function() {
+  var bounds = this.messageView_.container().getBoundingClientRect();
+
+  // We never saw the selection. Don't do anything.
+  if (this.selectedMessage_ == null)
     return;
 
-  var bounds = this.container_.getBoundingClientRect();
-  var scrollAmount = bounds.height - SCROLL_PAGE_MARGIN;
-  this.container_.scrollTop += up ? -scrollAmount : scrollAmount;
-  this.clampSelectionToScreen_();
+  var node = this.getSelectedNode_();
+  if (node == null) {
+    // We scrolled the selection off-screen. But we have seen it, so
+    // scroll there.
+    //
+    // TODO(davidben): This is a pretty poor approximation of the
+    // alignWithTop behavior, since we don't know how to compare
+    // messages.
+    var alignWithTop = true;
+    var firstMessage = this.messageView_.cachedMessages()[0];
+    if (firstMessage !== undefined) {
+      alignWithTop = this.selectedMessage_.receiveTime < firstMessage.receiveTime;
+    }
+    this.messageView_.scrollToMessage(
+      this.selectedMessage_.id, this.selectedMessage_, alignWithTop);
+    return;
+  }
+  var b = node.getBoundingClientRect();
+
+  // Scroll the message into view if not there.
+  if (b.top < bounds.top) {
+    node.scrollIntoView(true);
+    return;
+  }
+  if (b.bottom > bounds.bottom) {
+    node.scrollIntoView(false);
+    b = node.getBoundingClientRect();
+    if (b.top < bounds.top)
+      node.scrollIntoView(true);
+  }
 };
 
-MessageView.prototype.onKeydown_ = function(ev) {
-  function noModifiers(ev, except) {
-    except = except || {};
-    var modifiers = ["altKey", "altGraphKey", "ctrlKey", "metaKey", "shiftKey"];
-    for (var i = 0; i < modifiers.length; i++) {
-      if (modifiers[i] in except)
-        continue;
-      if (ev[modifiers[i]])
-        return false;
-    }
-    return true;
-  }
-
-  // Handle home/end keys ourselves. Instead of going to the bounds of
-  // the currently buffered view (totally meaningless), they go to the
-  // top/bottom of the full message list.
-  if ((ev.keyCode == 36 /* HOME */ && noModifiers(ev)) ||
-      (ev.keyCode == 38 /* UP */ && noModifiers(ev, {metaKey:1}) &&
-       ev.metaKey)) {
-    ev.preventDefault();
-    this.scrollToTop();
-  } else if ((ev.keyCode == 35 /* END */ && noModifiers(ev)) ||
-             (ev.keyCode == 40 /* DOWN */ && noModifiers(ev, {metaKey:1}) &&
-              ev.metaKey)) {
-    ev.preventDefault();
-    this.scrollToBottom();
-  } else if ((ev.keyCode == 40 /* DOWN */ || ev.keyCode == 74 /* j */) &&
-             noModifiers(ev)) {
+SelectionTracker.prototype.onKeydown_ = function(ev) {
+  if (matchKey(ev, 40 /* DOWN */) || matchKey(ev, 74 /* j */)) {
     if (this.adjustSelection_(1, ev.keyCode == 40))
       ev.preventDefault();
-  } else if ((ev.keyCode == 38 /* UP */ || ev.keyCode == 75 /* k */) &&
-             noModifiers(ev)) {
+  } else if (matchKey(ev, 38 /* UP */) || matchKey(ev, 75 /* k */)) {
     if (this.adjustSelection_(-1, ev.keyCode == 38))
       ev.preventDefault();
-  } else if (ev.keyCode == 33 /* PAGEUP */ && noModifiers(ev)) {
-    // We implement pageup, etc. ourselves too. I'd like to use the
-    // browser's, but we want to call clampSelectionToScreen_ on
-    // keyboard scrolls, but not on mouse scrolls, and we can't
-    // distinguish those from the scroll handler.
+  } else if (matchKey(ev, 82 /* r */)) {
     ev.preventDefault();
-    this.scrollPage_(true);
-  } else if (ev.keyCode == 34 /* PAGEDOWN */ && noModifiers(ev)) {
-    ev.preventDefault();
-    this.scrollPage_(false);
-  } else if (ev.keyCode == 32 /* SPACE */ && noModifiers(ev, {shiftKey: 1})) {
-    ev.preventDefault();
-    this.scrollPage_(ev.shiftKey);
+    this.ensureSelectionVisible_();
   }
 };
 
-MessageView.prototype.onClickMessage_ = function(idx, ev) {
-  this.selectMessage_(idx);
+SelectionTracker.prototype.onCacheChanged_ = function() {
+  if (this.selected_ != null) {
+    // Updated the cached selected message if needbe.
+    if (this.selectedMessage_ == null)
+      this.selectedMessage_ = this.messageView_.getMessage(this.selected_);
+    // Update the display. Node may have been destroyed or recreated.
+    var node = this.getSelectedNode_();
+    if (node)
+      node.classList.add("message-selected");
+  }
 };

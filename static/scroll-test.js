@@ -143,16 +143,18 @@ MockMessageTail.prototype.fireRequest_ = function(immediate) {
   }.bind(this), immediate ? 0 : 500);
 };
 
-var messageView;  // For debugging.
+var messageView, selectionTracker;  // For debugging.
 $(function() {
   //  var model = new MockMessageModel(1000);
   var model = new MessageModel("/api/v1", io.connect());
   messageView = new MessageView(model, document.getElementById("messagelist"));
+  selectionTracker = new SelectionTracker(messageView);
   document.getElementById("messagelist").focus();
 
   if (/#msg-/.test(location.hash)) {
     var msgId = location.hash.substring(5);
     messageView.scrollToMessage(msgId);
+    selectionTracker.selectMessage(msgId);
   } else {
     messageView.scrollToBottom();
   }
@@ -161,6 +163,7 @@ $(function() {
     if (/#msg-/.test(location.hash)) {
       var msgId = location.hash.substring(5);
       messageView.scrollToMessage(msgId);
+      selectionTracker.selectMessage(msgId);
     }
   });
 });
