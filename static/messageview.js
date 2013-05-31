@@ -171,8 +171,9 @@ MessageView.prototype.scrollToMessage = function(id, bootstrap, alignWithTop) {
     // TODO(davidben): Share code with the similar bit in
     // ensureSelectionVisible_?
     if (this.nodes_[0].getBoundingClientRect().top <
-        this.container_.getBoundingClientRect().top)
+        this.container_.getBoundingClientRect().top) {
       this.nodes_[0].scrollIntoView(true);
+    }
   } else {
     this.tailBelow_ = this.model_.newTailInclusive(
       id, this.appendMessages_.bind(this));
