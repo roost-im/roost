@@ -73,19 +73,9 @@ app.post('/api/v1/subscribe', function(req, res) {
     res.send(400, 'Subscription triple expected');
     return;
   }
-  subscriber.subscribeTo(
-    [req.body.subscription], req.body.credentials
+  subscriber.addUserSubscription(
+    req.user, req.body.subscription, req.body.credentials
   ).then(function() {
-    // Save the subscription in the database.
-    //
-    // TODO(davidben): Should this move to the subscriber? Maybe? Then
-    // the front-end can only read from the database, which is rather
-    // enticing.
-    return db.addUserSubscription(req.user.id,
-                                  req.body.subscription[0],
-                                  req.body.subscription[1],
-                                  req.body.subscription[2]);
-  }).then(function() {
     res.send(200);
   }, function(err) {
     res.send(500);
@@ -99,13 +89,9 @@ app.post('/api/v1/unsubscribe', function(req, res) {
     res.send(400, 'Subscription triple expected');
     return;
   }
-  // Only remove from the database, not from the subscriber.
-  // TODO(davidben): Garbage-collect the zephyr subs.
-  db.removeUserSubscription(
-    req.user.id,
-    req.body.subscription[0],
-    req.body.subscription[1],
-    req.body.subscription[2]
+  subscriber.removeUserSubscription(
+    req.user,
+    req.body.subscription
   ).then(function() {
     res.send(200);
   }, function(err) {
