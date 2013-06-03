@@ -665,14 +665,14 @@ SelectionTracker.prototype.adjustSelection_ = function(direction,
       direction * node.getBoundingClientRect().height;
 
     // Pick the first, but don't move the top of the selected message
-    // much. However, make sure the top is visible.
-    var newScroll = Math.min(
-      clamp(fixedScroll - MAX_ARROW_SCROLL,
-            goalScroll,
-            fixedScroll + MAX_ARROW_SCROLL),
-      topScroll);
+    // much.
+    var newScroll = clamp(fixedScroll - MAX_ARROW_SCROLL,
+                          goalScroll,
+                          fixedScroll + MAX_ARROW_SCROLL);
     this.messageView_.container().scrollTop = newScroll;
   }
+  // Whatever happens, make sure the message is visible.
+  this.ensureSelectionVisible_();
   return true;
 };
 
