@@ -3,7 +3,9 @@
   <head>
     <meta charset="utf-8">
     <title>Roost</title>
+    <script src="/q.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/winchan.js"></script>
   </head>
   <style>
     #log {
@@ -16,6 +18,7 @@
     <form id="subscribe">
       <input name="class">
       <input name="instance" value="*">
+      <input name="recipient" value="">
       <input type="submit" value="Subscribe">
     </form>
     <br>
@@ -49,6 +52,38 @@
         xhr.send();
       })();
 
+      var creds = null;
+      function getZephyrCreds() {
+        if (creds)
+          return Q(creds);
+        var deferred = Q.defer();
+        WinChan.open({
+          url: "https://webathena.mit.edu/#!request_ticket_v1",
+          relay_url: "https://webathena.mit.edu/relay.html",
+          params: {
+            services: [
+              {
+                realm: 'ATHENA.MIT.EDU',
+                principal: ['zephyr', 'zephyr'],
+              }
+            ]
+          }
+        }, function (err, r) {
+          console.log("got reply", err, r);
+	  if (err) {
+	    deferred.reject(err);
+	    return;
+	  }
+          if (r.status !== "OK") {
+	    deferred.reject(r);
+	    return;
+          }
+          creds = r.sessions[0];
+          deferred.resolve(creds);
+        });
+        return deferred.promise;
+      }
+
       document.getElementById("clearlog").addEventListener("click", function(ev) {
         document.getElementById("log").textContent = "";
       });
@@ -59,25 +94,36 @@
         var msgClass = this.class.value;
         var msgInstance = this.instance.value;
         if (msgInstance == '*') msgInstance = null; // Meh.
-        var msgRecipient = '';
+        var msgRecipient = this.recipient.value;
+        if (msgRecipient == "%me%")
+          msgRecipient = "davidben@ATHENA.MIT.EDU";
 
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/v1/subscribe", true);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        // Pffft.
-        xhr.onreadystatechange = function(ev) {
-          if (this.readyState != 4) return;
-          if (this.status == 200) {
-            log("Subscribed to " + msgClass);
-          } else {
-            log("Failed to subscribed to " + msgClass);
-          }
-        };
-        xhr.send(JSON.stringify({
-            class: msgClass,
-            instance: msgInstance,
-            recipient: msgRecipient
-        }));
+        var credsPromise;
+        if (msgRecipient && msgRecipient[0] !== '@') {
+          credsPromise = getZephyrCreds();
+        } else {
+          credsPromise = Q();
+        }
+        credsPromise.then(function(creds) {
+          var xhr = new XMLHttpRequest();
+          xhr.open("POST", "/api/v1/subscribe", true);
+          xhr.setRequestHeader("Content-Type", "application/json");
+          // Pffft.
+          xhr.onreadystatechange = function(ev) {
+            if (this.readyState != 4) return;
+            if (this.status == 200) {
+              log("Subscribed to " + msgClass);
+            } else {
+              log("Failed to subscribed to " + msgClass);
+            }
+          };
+          xhr.send(JSON.stringify({
+              class: msgClass,
+              instance: msgInstance,
+              recipient: msgRecipient,
+              credentials: creds
+          }));
+        }).done();
       });
 
       document.getElementById("unsubscribe").addEventListener("submit", function(ev) {
@@ -86,7 +132,9 @@
         var msgClass = this.class.value;
         var msgInstance = this.instance.value;
         if (msgInstance == '*') msgInstance = null; // Meh.
-        var msgRecipient = '';
+        var msgRecipient = this.recipient.value;
+        if (msgRecipient == "%me%")
+          msgRecipient = "davidben@ATHENA.MIT.EDU";
 
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/v1/unsubscribe", true);

@@ -39,11 +39,17 @@ app.post('/api/v1/subscribe', function(req, res) {
   var instance = stringOrNull(req.body.instance);
   // TODO(davidben): Permissions checking.
   var recipient = String(req.body.recipient);
+  var credentials = req.body.credentials;
   subscriber.subscribeTo(
-    [[klass, (instance === null ? '*' : instance), recipient]]
+    [[klass, (instance === null ? '*' : instance), recipient]],
+    credentials
   ).then(function() {
     // Save the subscription in the database.
-    return db.addUserSubscription(HACK_USER, klass, instance, '');
+    //
+    // TODO(davidben): Should this move to the subscriber? Maybe? Then
+    // the front-end can only read from the database, which is rather
+    // enticing.
+    return db.addUserSubscription(HACK_USER, klass, instance, recipient);
   }).then(function() {
     res.send(200);
   }, function(err) {
