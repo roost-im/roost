@@ -12,6 +12,12 @@ var subscriber = new Subscriber();
 var app = express();
 
 app.use(express.bodyParser());
+// CORS ALL THE THINGS. We won't use cookies and this is different
+// from Access-Control-Allow-Credentials. So we're fine.
+app.use(function(req, res, next) {
+  res.set('Access-Control-Allow-Origin', '*');
+  next();
+});
 
 function stringOrNull(arg) {
   if (arg == null)
