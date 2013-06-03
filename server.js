@@ -5,6 +5,7 @@ var util = require('util');
 var conf = require('./lib/config.js');
 var connections = require('./lib/connections.js');
 var db = require('./lib/db.js');
+var error = require('./lib/error.js');
 var msgid = require('./lib/msgid.js');
 var Subscriber = require('./lib/subscriber.js').Subscriber;
 
@@ -12,6 +13,14 @@ function stringOrNull(arg) {
   if (arg == null)
     return null;
   return String(arg);
+}
+
+function sendError(res, err) {
+  if (err instanceof error.UserError) {
+    res.send(err.code, err.msg);
+  } else {
+    res.send(500);
+  }
 }
 
 var subscriber = new Subscriber();
@@ -48,7 +57,7 @@ app.get('/api/v1/subscriptions', function(req, res) {
   db.getUserSubscriptions(req.user.id).then(function(subs) {
     res.json(200, subs);
   }, function(err) {
-    res.send(500);
+    sendError(res, err);
     console.error(err);
   }).done();
 });
@@ -78,7 +87,7 @@ app.post('/api/v1/subscribe', function(req, res) {
   ).then(function() {
     res.send(200);
   }, function(err) {
-    res.send(500);
+    sendError(res, err);
     console.error(err);
   }).done();
 });
@@ -95,7 +104,7 @@ app.post('/api/v1/unsubscribe', function(req, res) {
   ).then(function() {
     res.send(200);
   }, function(err) {
-    res.send(500);
+    sendError(res, err);
     console.error(err);
   }).done();
 });
@@ -120,7 +129,7 @@ app.get('/api/v1/messages', function(req, res) {
     });
     res.json(200, result);
   }, function(err) {
-    res.send(500);
+    sendError(res, err);
     console.error(err);
   }).done();
 });
