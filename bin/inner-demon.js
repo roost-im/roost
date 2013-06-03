@@ -23,6 +23,7 @@ zephyr.openPort();
 var commands = {};
 
 commands.subscribeTo = function(subs, cred) {
+
   // Write the credential to the ccache. We do this synchronously to avoid
   // dealing having to deal with synchronization here. This should be
   // on a tmpfs, and everything here is for a single user anyway.
@@ -75,6 +76,7 @@ commands.expel = function() {
 };
 
 process.on('message', function(m) {
+  console.dir(m);
   var id = m.id;
   if (commands[m.cmd]) {
     Q.fapply(commands[m.cmd], m.args).then(function(ret) {
@@ -84,6 +86,7 @@ process.on('message', function(m) {
         value: ret
       });
     }, function(err) {
+      console.error(err);
       process.send({
         id: id,
         cmd: 'error',
@@ -116,19 +119,19 @@ zephyr.on('notice', function(notice) {
 function writeUInt8Sync(fd, value) {
   var buf = new Buffer(1);
   buf.writeUInt8(value, 0);
-  fs.writeSync(fd, buffer);
+  fs.writeSync(fd, buf);
 }
 
 function writeUInt16BESync(fd, value) {
   var buf = new Buffer(2);
   buf.writeUInt16BE(value, 0);
-  fs.writeSync(fd, buffer);
+  fs.writeSync(fd, buf);
 }
 
 function writeUInt32BESync(fd, value) {
   var buf = new Buffer(4);
   buf.writeUInt32BE(value, 0);
-  fs.writeSync(fd, buffer);
+  fs.writeSync(fd, buf);
 }
 
 function writeCountedOctetStringSync(fd, buf) {
@@ -146,9 +149,9 @@ function writePrincipalSync(fd, name, realm) {
 }
 
 function writeCredentialSync(fd, cred) {
-  writePrincipalSync(cred.cname, cred.crealm);
-  writePrincipalSync(cred.sname, cred.srealm);
-  writeUInt16BESync(fd, Number(cred.key.keyType));
+  writePrincipalSync(fd, cred.cname, cred.crealm);
+  writePrincipalSync(fd, cred.sname, cred.srealm);
+  writeUInt16BESync(fd, Number(cred.key.keytype));
   writeCountedOctetStringSync(fd, new Buffer(cred.key.keyvalue, "base64"));
   writeUInt32BESync(fd, (cred.authtime / 1000)|0);
   writeUInt32BESync(fd, ((cred.authtime || cred.starttime) / 1000)|0);
@@ -160,7 +163,7 @@ function writeCredentialSync(fd, cred) {
     if (cred.flags[i])
       flags |= 1 << (31 - i);
   }
-  writeUInt32BESync(fd, flags);
+  writeUInt32BESync(fd, flags >>> 0);
   writeUInt32BESync(fd, 0);
   writeUInt32BESync(fd, 0);
 
@@ -170,8 +173,13 @@ function writeCredentialSync(fd, cred) {
   var ticketDER = krb_proto.Ticket.encodeDER(cred.ticket);
   // And convert the output back to a node buffer.
   ticketDER = new Buffer(new Uint8Array(
-    derEncoded.buffer, derEncoded.byteOffset, derEncoded.byteLength));
+    ticketDER.buffer, ticketDER.byteOffset, ticketDER.byteLength));
   writeCountedOctetStringSync(fd, ticketDER);
 
   writeCountedOctetStringSync(fd, new Buffer(0));
 }
+
+// Bahh... I want to ^C the outer guy and have it kill the inner guys.
+process.on('SIGINT', function() {
+  console.log('Inner demon ignoring SIGINT');
+});
