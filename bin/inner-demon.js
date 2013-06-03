@@ -47,11 +47,10 @@ commands.subscribeTo = function(subs, cred) {
     header.writeUInt16BE(8, 6);  // taglen (two uint32_ts)
     header.writeUInt32BE(0, 8);  // time_offset
     header.writeUInt32BE(0, 12);  // uset_offset
-    fs.writeSync(fd, header);
+    fs.writeSync(fd, header, 0, header.length);
 
     writePrincipalSync(fd, cred.cname, cred.crealm);
     writeCredentialSync(fd, cred);
-
   } catch(e) {
     fs.unlinkSync(ccachePath);
     throw e;
@@ -119,24 +118,24 @@ zephyr.on('notice', function(notice) {
 function writeUInt8Sync(fd, value) {
   var buf = new Buffer(1);
   buf.writeUInt8(value, 0);
-  fs.writeSync(fd, buf);
+  fs.writeSync(fd, buf, 0, buf.length);
 }
 
 function writeUInt16BESync(fd, value) {
   var buf = new Buffer(2);
   buf.writeUInt16BE(value, 0);
-  fs.writeSync(fd, buf);
+  fs.writeSync(fd, buf, 0, buf.length);
 }
 
 function writeUInt32BESync(fd, value) {
   var buf = new Buffer(4);
   buf.writeUInt32BE(value, 0);
-  fs.writeSync(fd, buf);
+  fs.writeSync(fd, buf, 0, buf.length);
 }
 
 function writeCountedOctetStringSync(fd, buf) {
   writeUInt32BESync(fd, buf.length);
-  fs.writeSync(fd, buf);
+  fs.writeSync(fd, buf, 0, buf.length);
 }
 
 function writePrincipalSync(fd, name, realm) {
