@@ -7,6 +7,12 @@ var db = require('./lib/db.js');
 var msgid = require('./lib/msgid.js');
 var Subscriber = require('./lib/subscriber.js').Subscriber;
 
+function stringOrNull(arg) {
+  if (arg == null)
+    return null;
+  return String(arg);
+}
+
 var subscriber = new Subscriber();
 
 var app = express();
@@ -19,15 +25,26 @@ app.use(function(req, res, next) {
   next();
 });
 
-function stringOrNull(arg) {
-  if (arg == null)
-    return null;
-  return String(arg);
-}
-var HACK_USER = 1;
+/*
+When this is implemented it goes above the authentication
+middleware. Everything under /api should be protected except for the
+authentication hook, however it works.
+
+app.post('/api/v1/authenticate', function(req, res) {
+});
+*/
+
+app.use('/api', function(req, res, next) {
+  // TODO(davidben): Actually implement authentication!!
+  req.user = {
+    id: 1,
+    principal: 'davidben@ATHENA.MIT.EDU'
+  };
+  next();
+});
 
 app.get('/api/v1/subscriptions', function(req, res) {
-  db.getUserSubscriptions(HACK_USER).then(function(subs) {
+  db.getUserSubscriptions(req.user.id).then(function(subs) {
     res.json(200, subs);
   }, function(err) {
     res.send(500);
@@ -55,7 +72,7 @@ app.post('/api/v1/subscribe', function(req, res) {
     // TODO(davidben): Should this move to the subscriber? Maybe? Then
     // the front-end can only read from the database, which is rather
     // enticing.
-    return db.addUserSubscription(HACK_USER, klass, instance, recipient);
+    return db.addUserSubscription(req.user.id, klass, instance, recipient);
   }).then(function() {
     res.send(200);
   }, function(err) {
@@ -75,7 +92,7 @@ app.post('/api/v1/unsubscribe', function(req, res) {
   var instance = stringOrNull(req.body.instance);
   var recipient = String(req.body.recipient);
   db.removeUserSubscription(
-    HACK_USER, klass, instance, recipient
+    req.user.id, klass, instance, recipient
   ).then(function() {
     res.send(200);
   }, function(err) {
@@ -93,7 +110,7 @@ app.get('/api/v1/messages', function(req, res) {
     offset = null;
   }
   db.getMessages(
-    HACK_USER, stringOrNull(offset), {
+    req.user.id, stringOrNull(offset), {
       inclusive: Boolean(req.query.inclusive|0),
       reverse: Boolean(req.query.reverse|0),
       limit: req.query.count|0
