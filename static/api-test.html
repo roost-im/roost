@@ -25,6 +25,7 @@
     <form id="unsubscribe">
       <input name="class">
       <input name="instance" value="*">
+      <input name="recipient" value="">
       <input type="submit" value="Unsubscribe">
     </form>
     <form id="getmessages">
@@ -118,10 +119,8 @@
             }
           };
           xhr.send(JSON.stringify({
-              class: msgClass,
-              instance: msgInstance,
-              recipient: msgRecipient,
-              credentials: creds
+            subscription: [msgClass, msgInstance, msgRecipient],
+            credentials: creds
           }));
         }).done();
       });
@@ -149,9 +148,7 @@
           }
         };
         xhr.send(JSON.stringify({
-            class: msgClass,
-            instance: msgInstance,
-            recipient: msgRecipient
+          subscription: [msgClass, msgInstance, msgRecipient],
         }));
       });
 

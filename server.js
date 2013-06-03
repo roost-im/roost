@@ -1,5 +1,6 @@
 var express = require('express');
 var http = require('http');
+var util = require('util');
 
 var conf = require('./lib/config.js');
 var connections = require('./lib/connections.js');
@@ -52,27 +53,38 @@ app.get('/api/v1/subscriptions', function(req, res) {
   }).done();
 });
 
+function isValidSub(sub) {
+  if (!util.isArray(sub))
+    return false;
+  if (sub.length !== 3)
+    return false;
+  if (typeof sub[0] !== 'string')
+    return false;
+  if (sub[1] !== null && typeof sub[1] !== 'string')
+    return false;
+  if (typeof sub[2] !== 'string')
+    return false;
+  return true;
+}
+
 app.post('/api/v1/subscribe', function(req, res) {
-  if (!req.body.class) {
-    res.send(400, 'class parameter required');
+  if (!isValidSub(req.body.subscription)) {
+    // TODO(davidben): Nicer error message.
+    res.send(400, 'Subscription triple expected');
     return;
   }
-  // Subscribe and save in the database.
-  var klass = String(req.body.class);
-  var instance = stringOrNull(req.body.instance);
-  // TODO(davidben): Permissions checking.
-  var recipient = String(req.body.recipient);
-  var credentials = req.body.credentials;
   subscriber.subscribeTo(
-    [[klass, (instance === null ? '*' : instance), recipient]],
-    credentials
+    [req.body.subscription], req.body.credentials
   ).then(function() {
     // Save the subscription in the database.
     //
     // TODO(davidben): Should this move to the subscriber? Maybe? Then
     // the front-end can only read from the database, which is rather
     // enticing.
-    return db.addUserSubscription(req.user.id, klass, instance, recipient);
+    return db.addUserSubscription(req.user.id,
+                                  req.body.subscription[0],
+                                  req.body.subscription[1],
+                                  req.body.subscription[2]);
   }).then(function() {
     res.send(200);
   }, function(err) {
@@ -82,17 +94,18 @@ app.post('/api/v1/subscribe', function(req, res) {
 });
 
 app.post('/api/v1/unsubscribe', function(req, res) {
-  if (!req.body.class) {
-    res.send(400, 'class parameter required');
+  if (!isValidSub(req.body.subscription)) {
+    // TODO(davidben): Nicer error message.
+    res.send(400, 'Subscription triple expected');
     return;
   }
   // Only remove from the database, not from the subscriber.
   // TODO(davidben): Garbage-collect the zephyr subs.
-  var klass = String(req.body.class);
-  var instance = stringOrNull(req.body.instance);
-  var recipient = String(req.body.recipient);
   db.removeUserSubscription(
-    req.user.id, klass, instance, recipient
+    req.user.id,
+    req.body.subscription[0],
+    req.body.subscription[1],
+    req.body.subscription[2]
   ).then(function() {
     res.send(200);
   }, function(err) {
