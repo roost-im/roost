@@ -63,7 +63,15 @@ commands.subscribeTo = function(subs, cred) {
 
 commands.expel = function() {
   console.log('Inner demon exiting');
-  return Q();
+  // Attempt to cancel subs if we can from our tickets, just so I
+  // don't leave all these things open in development.
+  //
+  // TODO(davidben): Session resumption and everything.
+  return Q.nfcall(zephyr.cancelSubscriptions).then(
+    function() { },
+    function(err) {
+      console.error("Could not cancel subs", principal, err);
+    });
 };
 
 process.on('message', function(m) {
@@ -81,6 +89,9 @@ process.on('message', function(m) {
         cmd: 'error',
         error: err
       });
+    }).finally(function() {
+      if (m.cmd === 'expel')
+        process.exit();
     }).done();
   } else {
     process.send({
