@@ -77,7 +77,7 @@ commands.expel = function() {
 process.on('message', function(m) {
   var id = m.id;
   if (commands[m.cmd]) {
-    Q.fapply(commands.m.cmd, m.args).then(function(ret) {
+    Q.fapply(commands[m.cmd], m.args).then(function(ret) {
       process.send({
         id: id,
         cmd: 'response',
@@ -142,7 +142,7 @@ function writePrincipalSync(fd, name, realm) {
   writeCountedOctetStringSync(fd, new Buffer(String(realm), "utf8"));
   name.nameString.forEach(function(component) {
     writeCountedOctetStringSync(fd, new Buffer(String(component), "utf8"));
-  }
+  });
 }
 
 function writeCredentialSync(fd, cred) {
