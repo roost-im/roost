@@ -96,6 +96,7 @@ MessageTail.prototype.close = function() {
   this.cb_ = null;
   this.model_.socket().removeListener("messages", this.messagesCb_);
   this.model_.socket().removeListener("reconnect", this.reconnectCb_);
+  this.model_.socket().emit("close-tail", this.tailId_);
 };
 MessageTail.prototype.createTail_ = function() {
   this.tailId_ = nextTailId++;
