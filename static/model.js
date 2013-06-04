@@ -129,6 +129,12 @@ function MessageReverseTail(model, start, cb) {
   this.messagesWanted_ = 0;
   this.cb_ = cb;
   this.pending_ = false;
+  // Exponential back-off thing on error.
+  this.throttleTimer_ = null;
+  this.throttle_ = 500;
+
+  this.reconnectCb_ = this.onReconnect_.bind(this);
+  this.model_.socket().on("reconnect", this.reconnectCb_);
 }
 MessageReverseTail.prototype.expandTo = function(count) {
   this.messagesWanted_ = Math.max(this.messagesWanted_,
@@ -137,19 +143,18 @@ MessageReverseTail.prototype.expandTo = function(count) {
 };
 MessageReverseTail.prototype.close = function() {
   this.cb_ = null;
+  this.model_.socket().removeListener("reconnect", this.reconnectCb_);
 };
 MessageReverseTail.prototype.fireRequest_ = function() {
-  if (this.pending_ || !this.cb_ || this.messagesWanted_ == 0)
+  if (this.pending_ || this.throttleTimer_ ||
+      !this.cb_ || this.messagesWanted_ == 0)
     return;
   var path = "/messages?reverse=1";
   if (this.start_ != null)
     path += "&offset=" + encodeURIComponent(this.start_);
   path += "&count=" + String(this.messagesWanted_);
   
-  // TODO(davidben): Error handling!
-  //
-  // TODO(davidben): If we find out from the socket or something that
-  // we've reconnected, try again.
+  // TODO(davidben): Report errors back up somewhere?
   this.pending_ = true;
   this.model_.apiRequest("GET", path).then(function(resp) {
     // Bleh. The widget code wants the messages in reverse order.
@@ -161,11 +166,13 @@ MessageReverseTail.prototype.fireRequest_ = function() {
     // Update fields (specifically |pending_|) AFTER the callback to
     // ensure they don't fire a new request; we might know there's no
     // use in continuing.
-    this.pending_ = false;
     if (resp.messages.length)
       this.start_ = resp.messages[0].id;
     this.messagesSent_ += resp.messages.length;
     this.messagesWanted_ -= resp.messages.length;
+
+    this.pending_ = false;
+    this.throttle_ = 500;
 
     // We're done. Shut everything off.
     if (resp.isDone) {
@@ -174,5 +181,31 @@ MessageReverseTail.prototype.fireRequest_ = function() {
       // Keep going if needbe.
       this.fireRequest_();
     }
+  }.bind(this), function(err) {
+    this.pending_ = false;
+
+    // If we get an error, do an exponential backoff.
+    var timer = { disabled: false };
+    window.setTimeout(function() {
+      if (timer.disabled)
+        return;
+      this.throttleTimer_ = null;
+      this.fireRequest_();
+    }.bind(this), this.throttle_);
+    this.throttleTimer_ = timer;
+    this.throttle_ *= 2;
+
+    // Don't lose the error.
+    throw err;
   }.bind(this)).done();
+};
+MessageReverseTail.prototype.onReconnect_ = function() {
+  // We don't use the socket, but if we get a reconnect, take that as
+  // a sign that we've got connectivity again.
+  if (this.throttleTimer_) {
+    this.throttleTimer_.disabled = true;
+    this.throttleTimer_ = null
+  }
+  this.throttle_ = 500;
+  this.fireRequest_();
 };
