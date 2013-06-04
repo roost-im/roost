@@ -1,5 +1,6 @@
 var express = require('express');
 var http = require('http');
+var path = require('path');
 var util = require('util');
 
 var conf = require('../lib/config.js');
@@ -134,7 +135,7 @@ app.get('/api/v1/messages', function(req, res) {
   }).done();
 });
 
-app.use(express.static(__dirname + '/static'));
+app.use(express.static(path.join(__dirname, '../static')));
 
 var server = http.createServer(app);
 var connectionManager = connections.listen(server, subscriber);
