@@ -81,6 +81,8 @@ function MessageTail(model, start, inclusive, cb) {
   // Hold onto this so we can unregister it.
   this.messagesCb_ = this.onMessages_.bind(this);
   this.model_.socket().on("messages", this.messagesCb_);
+  this.reconnectCb_ = this.onReconnect_.bind(this);
+  this.model_.socket().on("reconnect", this.reconnectCb_);
 
   this.createTail_();
 }
@@ -93,6 +95,7 @@ MessageTail.prototype.expandTo = function(count) {
 MessageTail.prototype.close = function() {
   this.cb_ = null;
   this.model_.socket().removeListener("messages", this.messagesCb_);
+  this.model_.socket().removeListener("reconnect", this.reconnectCb_);
 };
 MessageTail.prototype.createTail_ = function() {
   this.tailId_ = nextTailId++;
@@ -112,6 +115,11 @@ MessageTail.prototype.onMessages_ = function(id, msgs, isDone) {
   }
   if (this.cb_)
     this.cb_(msgs, isDone);
+};
+MessageTail.prototype.onReconnect_ = function() {
+  // Reset everything.
+  this.createTail_();
+  this.expandTo(0);
 };
 
 function MessageReverseTail(model, start, cb) {
@@ -139,6 +147,9 @@ MessageReverseTail.prototype.fireRequest_ = function() {
   path += "&count=" + String(this.messagesWanted_);
   
   // TODO(davidben): Error handling!
+  //
+  // TODO(davidben): If we find out from the socket or something that
+  // we've reconnected, try again.
   this.pending_ = true;
   this.model_.apiRequest("GET", path).then(function(resp) {
     // Bleh. The widget code wants the messages in reverse order.
