@@ -2,12 +2,12 @@ var express = require('express');
 var http = require('http');
 var util = require('util');
 
-var conf = require('./lib/config.js');
-var connections = require('./lib/connections.js');
-var db = require('./lib/db.js');
-var error = require('./lib/error.js');
-var msgid = require('./lib/msgid.js');
-var Subscriber = require('./lib/subscriber.js').Subscriber;
+var conf = require('../lib/config.js');
+var connections = require('../lib/connections.js');
+var db = require('../lib/db.js');
+var error = require('../lib/error.js');
+var msgid = require('../lib/msgid.js');
+var Subscriber = require('../lib/subscriber.js').Subscriber;
 
 function stringOrNull(arg) {
   if (arg == null)
