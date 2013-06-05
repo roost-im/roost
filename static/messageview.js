@@ -350,8 +350,10 @@ MessageView.prototype.formatMessage_ = function(idx, msg) {
   pre.appendChild(document.createTextNode(
     " " +
       msg.class + " / " + msg.instance + " / " + msg.sender + "  " +
-      new Date(msg.time).toString() + "\n" +
-      indented));
+      new Date(msg.time).toString() + "\n"));
+
+  pre.appendChild(ztextToDOM(parseZtext(indented)));
+
   pre.className = "message";
   pre.style.color = COLORS[((number % COLORS.length) + COLORS.length) % COLORS.length];
 
