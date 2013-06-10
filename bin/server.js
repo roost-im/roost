@@ -55,7 +55,7 @@ app.use('/api', function(req, res, next) {
 });
 
 app.get('/api/v1/subscriptions', function(req, res) {
-  db.getUserSubscriptions(req.user.id).then(function(subs) {
+  db.getUserSubscriptions(req.user).then(function(subs) {
     res.json(200, subs);
   }, function(err) {
     sendError(res, err);
@@ -119,7 +119,7 @@ app.get('/api/v1/messages', function(req, res) {
     offset = null;
   }
   db.getMessages(
-    req.user.id, stringOrNull(offset), {
+    req.user, stringOrNull(offset), {
       inclusive: Boolean(req.query.inclusive|0),
       reverse: Boolean(req.query.reverse|0),
       limit: req.query.count|0
