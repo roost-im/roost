@@ -37,6 +37,10 @@ commands.subscribeTo = function(subs, cred) {
   //
   // TODO(davidben): do a temporary+rename thing.
 
+  try {
+    fs.unlinkSync(ccachePath);
+  } catch (e) {
+  }
   var fd = fs.openSync(ccachePath, 'wx+', 0600);
   try {
     // Write the header.
