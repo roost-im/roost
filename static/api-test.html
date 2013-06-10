@@ -43,8 +43,8 @@
             var subs = JSON.parse(this.responseText);
             log("Currently subscribed to:");
             subs.forEach(function(sub) {
-              var inst = sub[1] == null ? '*' : sub[1];
-              log(" <" + sub[0] + "," + inst + "," + sub[2] + ">");
+              var inst = sub.instance == null ? '*' : sub.instance;
+              log(" <" + sub.class + "," + inst + "," + sub.recipient + ">");
             });
           } else {
             log("Failed to get subscriptions");
@@ -119,7 +119,11 @@
             }
           };
           xhr.send(JSON.stringify({
-            subscription: [msgClass, msgInstance, msgRecipient],
+            subscription: {
+              class: msgClass,
+              instance: msgInstance,
+              recipient: msgRecipient
+            },
             credentials: creds
           }));
         }).done();
@@ -148,7 +152,11 @@
           }
         };
         xhr.send(JSON.stringify({
-          subscription: [msgClass, msgInstance, msgRecipient],
+          subscription: {
+            class: msgClass,
+            instance: msgInstance,
+            recipient: msgRecipient
+          },
         }));
       });
 

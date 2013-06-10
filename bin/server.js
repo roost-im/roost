@@ -64,15 +64,13 @@ app.get('/api/v1/subscriptions', function(req, res) {
 });
 
 function isValidSub(sub) {
-  if (!util.isArray(sub))
+  if (typeof sub !== "object")
     return false;
-  if (sub.length !== 3)
+  if (typeof sub.class !== 'string')
     return false;
-  if (typeof sub[0] !== 'string')
+  if (sub.instance !== null && typeof sub.instance !== 'string')
     return false;
-  if (sub[1] !== null && typeof sub[1] !== 'string')
-    return false;
-  if (typeof sub[2] !== 'string')
+  if (typeof sub.recipient !== 'string')
     return false;
   return true;
 }
