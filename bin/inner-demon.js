@@ -22,8 +22,7 @@ zephyr.openPort();
 
 var commands = {};
 
-commands.subscribeTo = function(subs, cred) {
-
+function updateCredentialCacheSync(cred) {
   // Write the credential to the ccache. We do this synchronously to avoid
   // dealing having to deal with synchronization here. This should be
   // on a tmpfs, and everything here is for a single user anyway.
@@ -61,7 +60,10 @@ commands.subscribeTo = function(subs, cred) {
   } finally {
     fs.closeSync(fd);
   }
+}
 
+commands.subscribeTo = function(subs, cred) {
+  updateCredentialCacheSync(cred);
   return Q.nfcall(zephyr.subscribeTo, subs);
 };
 
