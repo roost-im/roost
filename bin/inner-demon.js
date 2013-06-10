@@ -74,7 +74,16 @@ commands.expel = function() {
   //
   // TODO(davidben): Session resumption and everything.
   return Q.nfcall(zephyr.cancelSubscriptions).then(
-    function() { },
+    function() {
+      // node-temp is messed up and can't delete temporary
+      // directories. Blow away our ccache first.
+      //
+      // TODO(davidben): Just write your own thing. Really.
+      try {
+        fs.unlinkSync(ccachePath);
+      } catch (e) {
+      }
+    },
     function(err) {
       console.error("Could not cancel subs", principal, err);
     });
