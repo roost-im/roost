@@ -34,23 +34,45 @@
     </form>
     <pre id="log"></pre>
     <script>
-      (function() {
+      function getAuthToken() {
+        var deferred = Q.defer();
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", "/api/v1/subscriptions", true);
+        xhr.open("POST", "/api/v1/auth", true);
         xhr.onreadystatechange = function(ev) {
           if (this.readyState != 4) return;
           if (this.status == 200) {
-            var subs = JSON.parse(this.responseText);
-            log("Currently subscribed to:");
-            subs.forEach(function(sub) {
-              var inst = sub.instance == null ? '*' : sub.instance;
-              log(" <" + sub.class + "," + inst + "," + sub.recipient + ">");
-            });
+            deferred.resolve(this.responseText.replace(/\s+$/, ''));
           } else {
-            log("Failed to get subscriptions");
+            deferred.reject("Error");
+            log("Failed to get auth token");
           }
         };
-        xhr.send();
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.send(JSON.stringify({principal: "davidben@ATHENA.MIT.EDU"}));;
+        return deferred.promise;
+      }
+
+      var token;
+      (function() {
+        getAuthToken().then(function(token) {
+          window.token = token;
+          var xhr = new XMLHttpRequest();
+          xhr.open("GET", "/api/v1/subscriptions?access_token=" + encodeURIComponent(token), true);
+          xhr.onreadystatechange = function(ev) {
+            if (this.readyState != 4) return;
+            if (this.status == 200) {
+              var subs = JSON.parse(this.responseText);
+              log("Currently subscribed to:");
+              subs.forEach(function(sub) {
+                var inst = sub.instance == null ? '*' : sub.instance;
+                log(" <" + sub.class + "," + inst + "," + sub.recipient + ">");
+              });
+            } else {
+              log("Failed to get subscriptions");
+            }
+          };
+          xhr.send();
+        });
       })();
 
       var creds = null;
@@ -107,7 +129,7 @@
         }
         credsPromise.then(function(creds) {
           var xhr = new XMLHttpRequest();
-          xhr.open("POST", "/api/v1/subscribe", true);
+          xhr.open("POST", "/api/v1/subscribe?access_token=" + encodeURIComponent(token), true);
           xhr.setRequestHeader("Content-Type", "application/json");
           // Pffft.
           xhr.onreadystatechange = function(ev) {
@@ -140,7 +162,7 @@
           msgRecipient = "davidben@ATHENA.MIT.EDU";
 
         var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/v1/unsubscribe", true);
+        xhr.open("POST", "/api/v1/unsubscribe?access_token=" + encodeURIComponent(token), true);
         xhr.setRequestHeader("Content-Type", "application/json");
         // Pffft.
         xhr.onreadystatechange = function(ev) {
@@ -167,7 +189,7 @@
 
         var xhr = new XMLHttpRequest();
         xhr.open("GET",
-                 "/api/v1/messages?offset=" + encodeURIComponent(offset) + "&count=10",
+                 "/api/v1/messages?offset=" + encodeURIComponent(offset) + "&count=10&access_token=" + encodeURIComponent(token),
                  true);
         xhr.onreadystatechange = function(ev) {
           if (this.readyState != 4) return;

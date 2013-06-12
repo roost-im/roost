@@ -3,6 +3,7 @@ var http = require('http');
 var path = require('path');
 var util = require('util');
 
+var auth = require('../lib/auth.js');
 var conf = require('../lib/config.js');
 var connections = require('../lib/connections.js');
 var db = require('../lib/db.js');
@@ -18,6 +19,9 @@ function stringOrNull(arg) {
 
 function sendError(res, err) {
   if (err instanceof error.UserError) {
+    // Blegh.
+    if (err.code == 401)
+      res.set('WWW-Authenticate', 'Bearer');
     res.send(err.code, err.msg);
   } else {
     res.send(500);
@@ -36,25 +40,58 @@ app.use(function(req, res, next) {
   next();
 });
 
-/*
-When this is implemented it goes above the authentication
-middleware. Everything under /api should be protected except for the
-authentication hook, however it works.
+function requireUser(req, res, next) {
+  // IE9 CORS (really XDomainRequest) doesn't allow custom headers.
+  // And even with CORS, an Authorization header would require a
+  // preflight. Allow passing the token in the query string. Google
+  // does this for their APIs.
+  //
+  // TODO(davidben): Allow passing it into the Authorization header
+  // anyway. Non-browser clients might appreciate a more HTTP-like
+  // header. Google uses
+  //
+  //   Authorization: Bearer ${token}
+  //
+  // which seems sane enough. But to be Proper, I ought to look up
+  // exactly how to parse those.
+  //
+  // See http://self-issued.info/docs/draft-ietf-oauth-v2-bearer.html
+  var token = req.query.access_token;
+  if (!token) {
+    // Appease the HTTP gods who say you need a WWW-Authenticate
+    // header when you send back 401. Hopefully this'll prevent a
+    // browser prompt. They're bad about not prompting...
+    res.set('WWW-Authenticate', 'Bearer');
+    res.send(401, 'Auth token required');
+    return;
+  }
+  auth.checkAuthToken(token).then(function(user) {
+    req.user = user;
+    next();
+  }, function(err) {
+    sendError(res, err);
+    console.error(err);
+  });
+}
 
-app.post('/api/v1/authenticate', function(req, res) {
+app.post('/api/v1/auth', function(req, res) {
+  // TODO(davidben): Real authentication!
+  var principal = req.body.principal;
+  if (typeof principal !== "string") {
+    res.send(400, 'Principal expected');
+    return;
+  }
+  db.getUser(principal).then(function(user) {
+    var token = auth.makeAuthToken(user);
+    res.set('Content-Type', 'text/plain');
+    res.send(200, token);
+  }, function(err) {
+    sendError(res, err);
+    console.error(err);
+  }).done();
 });
-*/
 
-app.use('/api', function(req, res, next) {
-  // TODO(davidben): Actually implement authentication!!
-  req.user = {
-    id: 1,
-    principal: 'davidben@ATHENA.MIT.EDU'
-  };
-  next();
-});
-
-app.get('/api/v1/subscriptions', function(req, res) {
+app.get('/api/v1/subscriptions', requireUser, function(req, res) {
   db.getUserSubscriptions(req.user).then(function(subs) {
     res.json(200, subs);
   }, function(err) {
@@ -75,7 +112,7 @@ function isValidSub(sub) {
   return true;
 }
 
-app.post('/api/v1/subscribe', function(req, res) {
+app.post('/api/v1/subscribe', requireUser, function(req, res) {
   if (!isValidSub(req.body.subscription)) {
     // TODO(davidben): Nicer error message.
     res.send(400, 'Subscription triple expected');
@@ -91,7 +128,7 @@ app.post('/api/v1/subscribe', function(req, res) {
   }).done();
 });
 
-app.post('/api/v1/unsubscribe', function(req, res) {
+app.post('/api/v1/unsubscribe', requireUser, function(req, res) {
   if (!isValidSub(req.body.subscription)) {
     // TODO(davidben): Nicer error message.
     res.send(400, 'Subscription triple expected');
@@ -108,7 +145,7 @@ app.post('/api/v1/unsubscribe', function(req, res) {
   }).done();
 });
 
-app.get('/api/v1/messages', function(req, res) {
+app.get('/api/v1/messages', requireUser, function(req, res) {
   var offset = stringOrNull(req.query.offset);
   if (offset) {
     offset = msgid.unseal(offset);
