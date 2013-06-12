@@ -77,6 +77,10 @@ function MessageTail(model, start, inclusive, cb) {
   this.messagesWanted_ = 0;
   // Callback. null on close.
   this.cb_ = cb;
+  // The ID of the tail.
+  this.tailId_ = null;
+  // The value of the most recent extend-tail message.
+  this.lastExtend_ = -1;
 
   // Hold onto this so we can unregister it.
   this.messagesCb_ = this.onMessages_.bind(this);
@@ -89,8 +93,11 @@ function MessageTail(model, start, inclusive, cb) {
 MessageTail.prototype.expandTo = function(count) {
   this.messagesWanted_ = Math.max(this.messagesWanted_,
                                   count - this.messagesSentTotal_);
-  this.model_.socket().emit("extend-tail", this.tailId_,
-                            this.messagesWanted_ + this.messagesSentRecent_);
+  var newExtend = this.messagesWanted_ + this.messagesSentRecent_;
+  if (this.lastExtend_ < newExtend) {
+    this.model_.socket().emit("extend-tail", this.tailId_, newExtend);
+    this.lastExtend_ = newExtend;
+  }
 };
 MessageTail.prototype.close = function() {
   this.cb_ = null;
@@ -101,6 +108,7 @@ MessageTail.prototype.close = function() {
 MessageTail.prototype.createTail_ = function() {
   this.tailId_ = nextTailId++;
   this.messagesSentRecent_ = 0;  // New tail, so we reset offset.
+  this.lastExtend_ = -1;  // Also reset what we've requested.
   this.model_.socket().emit("new-tail",
                             this.tailId_, this.lastSent_, this.inclusive_);
 };
