@@ -124,8 +124,8 @@ app.post('/api/v1/subscribe', requireUser, function(req, res) {
   }
   subscriber.addUserSubscription(
     req.user, req.body.subscription, req.body.credentials
-  ).then(function() {
-    res.send(200);
+  ).then(function(sub) {
+    res.json(200, sub);
   }, function(err) {
     sendError(res, err);
     console.error(err);
@@ -142,7 +142,7 @@ app.post('/api/v1/unsubscribe', requireUser, function(req, res) {
     req.user,
     req.body.subscription
   ).then(function() {
-    res.send(200);
+    res.json(200, { unsubscribed: true });
   }, function(err) {
     sendError(res, err);
     console.error(err);
