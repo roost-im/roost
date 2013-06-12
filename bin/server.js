@@ -168,6 +168,26 @@ app.get('/api/v1/messages', requireUser, function(req, res) {
   }).done();
 });
 
+app.get('/api/v1/zephyrcreds', requireUser, function(req, res) {
+  res.json(200, {
+    needsRefresh: subscriber.needsZephyrCreds(req.user)
+  });
+});
+
+app.post('/api/v1/zephyrcreds', requireUser, function(req, res) {
+  if (!req.body.credentials) {
+    res.send(400, "Missing credentials parameter");
+  }
+  subscriber.refreshPrivateSubs(
+    req.user, req.body.credentials
+  ).then(function() {
+    res.json(200, { refreshed: true });
+  }, function(err) {
+    sendError(res, err);
+    console.error(err);
+  }).done();
+});
+
 app.use(express.static(path.join(__dirname, '../static')));
 
 var server = http.createServer(app);

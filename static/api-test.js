@@ -1,18 +1,5 @@
 var api = new API(location.protocol + "//" + location.host);
 
-(function() {
-  api.get("/api/v1/subscriptions").then(function(subs) {
-    log("Currently subscribed to:");
-    subs.forEach(function(sub) {
-      var inst = sub.instance == null ? '*' : sub.instance;
-      log(" <" + sub.class + "," + inst + "," + sub.recipient + ">");
-    });
-  }, function(err) {
-    log("Failed to get subscriptions: " + err);
-    throw err;
-  }).done();
-})();
-
 var creds = null;
 function getZephyrCreds() {
   if (creds)
@@ -43,6 +30,18 @@ function getZephyrCreds() {
     deferred.resolve(creds);
   });
   return deferred.promise;
+}
+
+function checkCreds() {
+  api.get("/api/v1/zephyrcreds").then(function(result) {
+    if (result.needsRefresh) {
+      log("Needs credential refresh");
+    } else {
+      log("Zephyr credentials up-to-date");
+    }
+  }, function(err) {
+    log("Error checking inner demon status: " + err);
+  }).done();
 }
 
 document.getElementById("clearlog").addEventListener("click", function(ev) {
@@ -126,6 +125,42 @@ document.getElementById("getmessages").addEventListener("submit", function(ev) {
   }).done();
 });
 
+document.getElementById("checkdemon").addEventListener("click", function(ev) {
+  api.get("/api/v1/zephyrcreds").then(function(result) {
+    if (result.needsRefresh) {
+      log("Needs credential refresh");
+    } else {
+      log("Zephyr credentials up-to-date");
+    }
+  }, function(err) {
+    log("Error checking inner demon status: " + err);
+  }).done();
+});
+
+document.getElementById("refreshcreds").addEventListener("click", function(ev) {
+  getZephyrCreds().then(function(creds) {
+    return api.post("/api/v1/zephyrcreds", {credentials: creds});
+  }).then(function() {
+      log("Refreshed");
+  }, function(err) {
+    log("Error refreshing creds: " + err);
+  }).done();
+});
+
 function log(msg) {
   document.getElementById("log").textContent += msg + "\n";
 }
+
+(function() {
+  api.get("/api/v1/subscriptions").then(function(subs) {
+    log("Currently subscribed to:");
+    subs.forEach(function(sub) {
+      var inst = sub.instance == null ? '*' : sub.instance;
+      log(" <" + sub.class + "," + inst + "," + sub.recipient + ">");
+    });
+  }, function(err) {
+    log("Failed to get subscriptions: " + err);
+    throw err;
+  }).done();
+  checkCreds();
+})();
