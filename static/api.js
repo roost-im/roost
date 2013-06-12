@@ -61,6 +61,9 @@ function API(urlBase) {
   this.reconnectTries_ = RECONNECT_TRIES;
 
   this.tryConnectSocket_();
+
+  // If we go online, try to reconnect then and there.
+  window.addEventListener("online", this.tryConnectSocket_.bind(this));
 }
 API.prototype = Object.create(io.EventEmitter.prototype);
 
