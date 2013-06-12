@@ -1,11 +1,17 @@
 function NetworkError(msg) {
   this.msg = msg;
 }
+NetworkError.prototype.toString = function() {
+  return "Network error";
+};
 function HttpError(status, statusText, responseText) {
   this.status = status;
   this.statusText = statusText;
   this.responseText = responseText;
 }
+HttpError.prototype.toString = function() {
+  return this.responseText;
+};
 
 function corsRequest(method, url, data) {
   var xhr = new XMLHttpRequest();
@@ -28,7 +34,7 @@ function corsRequest(method, url, data) {
       deferred.reject(new HttpError(this.status, this.statusText,
                                     this.responseText));
     } else {
-      deferred.reject(new NetworkError("Request failed"));
+      deferred.reject(new NetworkError());
     }
   };
   xhr.onerror = function() {
