@@ -1,7 +1,7 @@
 var api = new API(location.protocol + "//" + location.host);
 
 (function() {
-  api.apiRequest("GET", "/api/v1/subscriptions").then(function(subs) {
+  api.get("/api/v1/subscriptions").then(function(subs) {
     log("Currently subscribed to:");
     subs.forEach(function(sub) {
       var inst = sub.instance == null ? '*' : sub.instance;
@@ -74,7 +74,7 @@ document.getElementById("subscribe").addEventListener("submit", function(ev) {
       },
       credentials: creds
     };
-    return api.apiRequest("POST", "/api/v1/subscribe", {}, data).then(function() {
+    return api.post("/api/v1/subscribe", data).then(function() {
       log("Subscribed to " + msgClass);
     });
   }, function(err) {
@@ -100,7 +100,7 @@ document.getElementById("unsubscribe").addEventListener("submit", function(ev) {
       recipient: msgRecipient
     }
   };
-  api.apiRequest("POST", "/api/v1/unsubscribe", {}, data).then(function() {
+  api.post("/api/v1/unsubscribe", data).then(function() {
     log("Unsubscribed from " + msgClass);
   }, function(err) {
     log("Failed to unsubscribed from " + msgClass + ": " + err);
@@ -115,7 +115,7 @@ document.getElementById("getmessages").addEventListener("submit", function(ev) {
     offset: this.offset.value,
     count: '10'
   };
-  api.apiRequest("GET", "/api/v1/messages", params).then(function(result) {
+  api.get("/api/v1/messages", params).then(function(result) {
     result.messages.forEach(function(msg) {
       log(msg.id + ": " + msg.class + " / " + msg.instance + " / " +
           msg.sender + " " + new Date(msg.time) + "\n" +

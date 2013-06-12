@@ -145,9 +145,7 @@ MessageReverseTail.prototype.fireRequest_ = function() {
     params.offset = this.start_;
   // TODO(davidben): Report errors back up somewhere?
   this.pending_ = true;
-  this.model_.api_.apiRequest(
-    "GET", "/api/v1/messages", params
-  ).then(function(resp) {
+  this.model_.api_.get("/api/v1/messages", params).then(function(resp) {
     // Bleh. The widget code wants the messages in reverse order.
     resp.messages.reverse();
 

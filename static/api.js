@@ -90,7 +90,7 @@ API.prototype.getAuthToken_ = function() {
   return this.refreshAuthToken_();
 };
 
-API.prototype.apiRequest = function(method, path, params, data, isRetry) {
+API.prototype.request = function(method, path, params, data, isRetry) {
   return this.getAuthToken_().then(function(token) {
     var url =
       this.urlBase_ + path + "?access_token=" + encodeURIComponent(token);
@@ -106,11 +106,19 @@ API.prototype.apiRequest = function(method, path, params, data, isRetry) {
         // TODO(davidben): Retry the request after we get a new
         // one. Only retry it once though.
         if (!isRetry)
-          return this.apiRequest(method, path, params, data, true);
+          return this.request(method, path, params, data, true);
       }
       throw err;
     }.bind(this));
   }.bind(this));
+};
+
+API.prototype.get = function(path, params) {
+  return this.request("GET", path, params);
+};
+
+API.prototype.post = function(path, data) {
+  return this.request("POST", path, {}, data);
 };
 
 API.prototype.socket = function() {
