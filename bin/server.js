@@ -91,6 +91,10 @@ app.post('/api/v1/auth', function(req, res) {
   }).done();
 });
 
+app.get('/api/v1/ping', requireUser, function(req, res) {
+  res.json(200, { pong: 1 });
+});
+
 app.get('/api/v1/subscriptions', requireUser, function(req, res) {
   db.getUserSubscriptions(req.user).then(function(subs) {
     res.json(200, subs);
