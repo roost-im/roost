@@ -162,7 +162,11 @@ API.prototype.tryConnectSocket_ = function() {
       }.bind(this));
     }.bind(this));
 
+    // Ensure only one of error and connect_failed are handled.
+    var cancelled = false;
     socket.once("error", function(err) {
+      if (cancelled) return;
+      cancelled = true;
       this.socketPending_ = false;
       // Blegh. Retry with a new token.
       if (err == "handshake unauthorized") {
@@ -177,6 +181,8 @@ API.prototype.tryConnectSocket_ = function() {
     }.bind(this));
 
     socket.once("connect_failed", function() {
+      if (cancelled) return;
+      cancelled = true;
       this.socketPending_ = false;
       // Reconnect with exponential back-off.
       this.reconnectDelay_ *= 2;
