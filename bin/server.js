@@ -11,12 +11,6 @@ var error = require('../lib/error.js');
 var msgid = require('../lib/msgid.js');
 var Subscriber = require('../lib/subscriber.js').Subscriber;
 
-function stringOrNull(arg) {
-  if (arg == null)
-    return null;
-  return String(arg);
-}
-
 function sendError(res, err) {
   if (err instanceof error.UserError) {
     // Blegh.
@@ -150,7 +144,7 @@ app.post('/api/v1/unsubscribe', requireUser, function(req, res) {
 });
 
 app.get('/api/v1/messages', requireUser, function(req, res) {
-  var offset = stringOrNull(req.query.offset);
+  var offset = req.query.offset;
   if (offset) {
     offset = msgid.unseal(offset);
   } else {
@@ -158,7 +152,7 @@ app.get('/api/v1/messages', requireUser, function(req, res) {
     offset = null;
   }
   db.getMessages(
-    req.user, stringOrNull(offset), {
+    req.user, offset, {
       inclusive: Boolean(req.query.inclusive|0),
       reverse: Boolean(req.query.reverse|0),
       limit: req.query.count|0
