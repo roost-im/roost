@@ -1,46 +1,8 @@
 "use strict";
 
-function MessageModel(apiRoot, socket) {
-  this.socket_ = socket;
-  this.apiRoot_ = apiRoot;
+function MessageModel(api) {
+  this.api_ = api;
 }
-MessageModel.prototype.socket = function() {
-  return this.socket_;
-};
-MessageModel.prototype.apiRequest = function(method, path, data) {
-  var url = this.apiRoot_ + path;
-  var xhr = new XMLHttpRequest();
-  if ("withCredentials" in xhr) {
-    // XHR for Chrome/Firefox/Opera/Safari.
-    xhr.open(method, url, true);
-  } else if (typeof XDomainRequest != "undefined") {
-    // XDomainRequest for IE.
-    xhr = new XDomainRequest();
-    xhr.open(method, url);
-  } else {
-    return Q.reject("CORS not supported.");
-  }
-
-  var deferred = Q.defer();
-  xhr.onload = function() {
-    if (this.status == 200) {
-      deferred.resolve(JSON.parse(xhr.responseText));
-    } else {
-      deferred.reject(this.statusText);
-    }
-  };
-  xhr.onerror = function() {
-    deferred.reject("Request failed");
-  };
-
-  if (data !== undefined) {
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.send(JSON.stringify(data));
-  } else {
-    xhr.send();
-  }
-  return deferred.promise;
-};
 MessageModel.prototype.newTailInclusive = function(start, cb) {
   return new MessageTail(this, start, true, cb);
 };
@@ -82,35 +44,57 @@ function MessageTail(model, start, inclusive, cb) {
   // The value of the most recent extend-tail message.
   this.lastExtend_ = -1;
 
-  // Hold onto this so we can unregister it.
+  // Hold onto these so we can unregister them.
+  this.connectedCb_ = this.onConnect_.bind(this);
+  this.disconnectCb_ = this.onDisconnect_.bind(this);
   this.messagesCb_ = this.onMessages_.bind(this);
-  this.model_.socket().on("messages", this.messagesCb_);
-  this.reconnectCb_ = this.onReconnect_.bind(this);
-  this.model_.socket().on("reconnect", this.reconnectCb_);
+  this.model_.api_.on("connect", this.connectedCb_);
 
-  this.createTail_();
+  this.onConnect_();
 }
+MessageTail.prototype.onConnect_ = function() {
+  // Unregister our old handlers.
+  this.onDisconnect_();
+  this.socket_ = this.model_.api_.socket();
+  if (this.socket_) {
+    this.socket_.on("messages", this.messagesCb_);
+    this.socket_.on("disconnect", this.disconnectCb_);
+    // Reset everything.
+    this.createTail_();
+    this.expandTo(0);
+  }
+};
+MessageTail.prototype.onDisconnect_ = function() {
+  if (this.socket_) {
+    this.socket_.removeListener("messages", this.messagesCb_);
+    this.socket_.removeListener("disconnect", this.disconnectCb_);
+    this.socket_ = null;
+  }
+};
 MessageTail.prototype.expandTo = function(count) {
   this.messagesWanted_ = Math.max(this.messagesWanted_,
                                   count - this.messagesSentTotal_);
   var newExtend = this.messagesWanted_ + this.messagesSentRecent_;
-  if (this.lastExtend_ < newExtend) {
-    this.model_.socket().emit("extend-tail", this.tailId_, newExtend);
+  if (this.socket_ && this.lastExtend_ < newExtend) {
+    this.socket_.emit("extend-tail", this.tailId_, newExtend);
     this.lastExtend_ = newExtend;
   }
 };
 MessageTail.prototype.close = function() {
+  if (this.socket_)
+    this.socket_.emit("close-tail", this.tailId_);
+  this.onDisconnect_();
+  this.model_.api_.removeListener("connect", this.connectedCb_);
   this.cb_ = null;
-  this.model_.socket().removeListener("messages", this.messagesCb_);
-  this.model_.socket().removeListener("reconnect", this.reconnectCb_);
-  this.model_.socket().emit("close-tail", this.tailId_);
 };
 MessageTail.prototype.createTail_ = function() {
-  this.tailId_ = nextTailId++;
-  this.messagesSentRecent_ = 0;  // New tail, so we reset offset.
-  this.lastExtend_ = -1;  // Also reset what we've requested.
-  this.model_.socket().emit("new-tail",
-                            this.tailId_, this.lastSent_, this.inclusive_);
+  if (this.socket_) {
+    this.tailId_ = nextTailId++;
+    this.messagesSentRecent_ = 0;  // New tail, so we reset offset.
+    this.lastExtend_ = -1;  // Also reset what we've requested.
+    this.socket_.emit("new-tail",
+                      this.tailId_, this.lastSent_, this.inclusive_);
+  }
 };
 MessageTail.prototype.onMessages_ = function(id, msgs, isDone) {
   if (id != this.tailId_)
@@ -125,11 +109,6 @@ MessageTail.prototype.onMessages_ = function(id, msgs, isDone) {
   if (this.cb_)
     this.cb_(msgs, isDone);
 };
-MessageTail.prototype.onReconnect_ = function() {
-  // Reset everything.
-  this.createTail_();
-  this.expandTo(0);
-};
 
 function MessageReverseTail(model, start, cb) {
   this.model_ = model;
@@ -143,7 +122,7 @@ function MessageReverseTail(model, start, cb) {
   this.throttle_ = 500;
 
   this.reconnectCb_ = this.onReconnect_.bind(this);
-  this.model_.socket().on("reconnect", this.reconnectCb_);
+  this.model_.api_.on("connect", this.reconnectCb_);
 }
 MessageReverseTail.prototype.expandTo = function(count) {
   this.messagesWanted_ = Math.max(this.messagesWanted_,
@@ -152,20 +131,23 @@ MessageReverseTail.prototype.expandTo = function(count) {
 };
 MessageReverseTail.prototype.close = function() {
   this.cb_ = null;
-  this.model_.socket().removeListener("reconnect", this.reconnectCb_);
+  this.model_.api_.removeListener("connect", this.reconnectCb_);
 };
 MessageReverseTail.prototype.fireRequest_ = function() {
   if (this.pending_ || this.throttleTimer_ ||
       !this.cb_ || this.messagesWanted_ == 0)
     return;
-  var path = "/messages?reverse=1";
+  var params = {
+    reverse: "1",
+    count: String(this.messagesWanted_)
+  }
   if (this.start_ != null)
-    path += "&offset=" + encodeURIComponent(this.start_);
-  path += "&count=" + String(this.messagesWanted_);
-  
+    params.offset = this.start_;
   // TODO(davidben): Report errors back up somewhere?
   this.pending_ = true;
-  this.model_.apiRequest("GET", path).then(function(resp) {
+  this.model_.api_.apiRequest(
+    "GET", "/api/v1/messages", params
+  ).then(function(resp) {
     // Bleh. The widget code wants the messages in reverse order.
     resp.messages.reverse();
 

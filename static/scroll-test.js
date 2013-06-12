@@ -146,16 +146,10 @@ MockMessageTail.prototype.fireRequest_ = function(immediate) {
   }.bind(this), immediate ? 0 : 500);
 };
 
-var messageView, selectionTracker;  // For debugging.
+var api, model, messageView, selectionTracker;  // For debugging.
 $(function() {
-  // var model = new MockMessageModel(1000);
-  var socket = io.connect();
-  socket.emit('auth', 'bogus_token');
-  socket.on('reconnect', function() {
-    socket.emit('auth', 'bogus_token');
-  });
-
-  var model = new MessageModel("/api/v1", socket);
+  api = new API(location.protocol + "//" + location.host);
+  model = new MessageModel(api);
   messageView = new MessageView(model, document.getElementById("messagelist"));
   selectionTracker = new SelectionTracker(messageView);
   document.getElementById("messagelist").focus();
