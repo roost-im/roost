@@ -1,15 +1,41 @@
 "use strict";
 
-function indexOfEither(str, a, b) {
-  if (b == null)
-    return str.indexOf(a);
-  var aInd = str.indexOf(a);
-  var bInd = str.indexOf(b);
-  if (aInd < 0)
-    return bInd;
-  if (bInd < 0)
-    return aInd;
-  return Math.min(aInd, bInd);
+// This parser is somewhat wonky, but this seems to be faster than the
+// regex + substring version. I guess str.substring(...).search(regex)
+// isn't consistently optimized to not make a copy? Yeah, I dunno.
+
+function nextChar(str, startInd, stopChar) {
+  // Give the type inferencer a bit of a boost.
+  str = "" + str;
+  var len = str.length;
+  for (var i = startInd; i < len; i++) {
+    if (str[i] === '@' || str[i] === stopChar)
+      return i;
+  }
+  return -1;
+}
+
+var CHARCODE_a = 'a'.charCodeAt(0);
+var CHARCODE_z = 'z'.charCodeAt(0);
+var CHARCODE_A = 'A'.charCodeAt(0);
+var CHARCODE_Z = 'Z'.charCodeAt(0);
+var CHARCODE_0 = '0'.charCodeAt(0);
+var CHARCODE_9 = '9'.charCodeAt(0);
+var CHARCODE__ = '_'.charCodeAt(0);
+function findTagName(str, startInd) {
+  // Give the type inferencer a bit of a boost.
+  str = "" + str;
+  var len = str.length;
+  for (var i = startInd; i < len; i++) {
+    var code = str.charCodeAt(i);
+    if (!((code >= CHARCODE_a && code <= CHARCODE_z) ||
+          (code >= CHARCODE_A && code <= CHARCODE_Z) ||
+          (code >= CHARCODE_0 && code <= CHARCODE_9) ||
+          (code == CHARCODE__))) {
+      break;
+    }
+  }
+  return str.substring(startInd, i);
 }
 
 var OTHERSIDE = {
@@ -28,7 +54,7 @@ function ZtextNode(tag, open, close, children) {
 
 var MAX_ZTEXT_DEPTH = 32;
 
-function parseZtextHelper(str, stopChar, maxDepth) {
+function parseZtextHelper(str, startInd, stopChar, maxDepth) {
   var ret = [ ];
   function pushText(t) {
     if (ret.length && typeof ret[ret.length - 1] == "string") {
@@ -37,47 +63,53 @@ function parseZtextHelper(str, stopChar, maxDepth) {
       ret.push(t);
     }
   }
-  while (str.length > 0) {
-    var index = indexOfEither(str, "@", stopChar);
+  while (startInd < str.length) {
+    var index = nextChar(str, startInd, stopChar);
     if (index < 0) {
-      pushText(str);
-      str = "";
+      pushText(str.substring(startInd));
+      startInd = str.length;
       continue;
     }
-    pushText(str.substring(0, index));
-    if (str[index] == "@" && maxDepth > 0) {
+    pushText(str.substring(startInd, index));
+    if (str[index] == "@") {
       if (str[index + 1] == "@") {
         pushText("@");
-        str = str.substring(index + 2);
+        startInd = index + 2;
         continue;
       }
-      var tagName = str.substring(index + 1).match(/^[a-zA-Z0-9_]*/)[0];
+      // Don't recurse too deep.
+      if (maxDepth <= 0) {
+        pushText("@");
+        startInd++;
+      }
+      var tagName = findTagName(str, index + 1);
       var open = str[index + 1 + tagName.length];
       var close = OTHERSIDE[open];
       if (!close) {
-        pushText("@");
-        str = str.substring(index + 1);
+        pushText("@" + tagName);
+        startInd = index + 1 + tagName.length;
         continue;
       }
       var r = parseZtextHelper(
-        str.substring(index + 1 + tagName.length + 1),
+        str,
+        index + 1 + tagName.length + 1,
         close,
         maxDepth - 1);
       ret.push(new ZtextNode(tagName, open, close, r.parsed));
-      str = r.rest;
+      startInd = r.startInd;
     } else {
       // str[index] == stopChar
-      str = str.substring(index + 1);
+      startInd = index + 1;
       break;
     }
   }
   return {
     parsed: ret,
-    rest: str
+    startInd: startInd
   };
 }
 function parseZtext(str) {
-  return parseZtextHelper(str, null, MAX_ZTEXT_DEPTH).parsed;
+  return parseZtextHelper(str, 0, null, MAX_ZTEXT_DEPTH).parsed;
 }
 
 function ztextToDOM(ztext) {
