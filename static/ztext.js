@@ -112,10 +112,11 @@ function parseZtext(str) {
   return parseZtextHelper(str, 0, null, MAX_ZTEXT_DEPTH).parsed;
 }
 
-function ztextToDOM(ztext) {
-  var fragment = document.createDocumentFragment();
+function ztextToDOM(ztext, parent) {
+  if (parent == null)
+    parent = document.createDocumentFragment();
   // Either the fragment or the currently active color <span>.
-  var curParent = fragment;
+  var curParent = parent;
   for (var i = 0; i < ztext.length; i++) {
     var chunk = ztext[i];
     if (typeof chunk === "string") {
@@ -132,11 +133,11 @@ function ztextToDOM(ztext) {
         curParent.appendChild(ztextToDOM(chunk.children));
       } else if (chunk.tag == "b" || chunk.tag == "bold") {
         var elem = document.createElement("b");
-        elem.appendChild(ztextToDOM(chunk.children));
+        ztextToDOM(chunk.children, elem);
         curParent.appendChild(elem);
       } else if (chunk.tag == "i" || chunk.tag == "italic") {
         var elem = document.createElement("i");
-        elem.appendChild(ztextToDOM(chunk.children));
+        ztextToDOM(chunk.children, elem);
         curParent.appendChild(elem);
       } else if (chunk.tag == "color" &&
                  chunk.children.length == 1 &&
@@ -148,17 +149,17 @@ function ztextToDOM(ztext) {
         // TODO(davidben): Whitelist this thing more?
         elem.style.color = color;
         // This one is weird and affects the current color.
-        fragment.appendChild(elem);
+        parent.appendChild(elem);
         curParent = elem;
       } else {
         // BarnOwl doesn't parse unknown tags and zwgc throws them
         // away. People are probably more accustomed to the former.
         curParent.appendChild(document.createTextNode(
           "@" + chunk.tag + chunk.open));
-        curParent.appendChild(ztextToDOM(chunk.children));
+        ztextToDOM(chunk.children, curParent);
         curParent.appendChild(document.createTextNode(chunk.close));
       }
     }
   }
-  return fragment;
+  return parent;
 }
