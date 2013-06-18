@@ -73,20 +73,19 @@ commands.expel = function() {
   // don't leave all these things open in development.
   //
   // TODO(davidben): Session resumption and everything.
-  return Q.nfcall(zephyr.cancelSubscriptions).then(
-    function() {
-      // node-temp is messed up and can't delete temporary
-      // directories. Blow away our ccache first.
-      //
-      // TODO(davidben): Just write your own thing. Really.
-      try {
-        fs.unlinkSync(ccachePath);
-      } catch (e) {
-      }
-    },
-    function(err) {
-      console.error("Could not cancel subs", principal, err);
-    });
+  return Q.nfcall(zephyr.cancelSubscriptions).then(function() {
+  }, function(err) {
+    console.error("Could not cancel subs", principal, err);
+  }).finally(function() {
+    // node-temp is messed up and can't delete temporary
+    // directories. Blow away our ccache first.
+    //
+    // TODO(davidben): Just write your own thing. Really.
+    try {
+      fs.unlinkSync(ccachePath);
+    } catch (e) {
+    }
+  });
 };
 
 process.on('message', function(m) {
