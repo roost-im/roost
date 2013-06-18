@@ -10,19 +10,19 @@ var temp = require('temp');
 var zephyr = require('zephyr');
 
 var krb_proto = require('../lib/krb_proto.js');
+var Principal = require('../lib/principal.js').Principal;
 var message = require('../lib/message.js');
 
-var principal = process.argv[2];
+var principalStr = process.argv[2];
+var principal = Principal.fromString(principalStr);
 var directory = temp.mkdirSync(
-  'inner-demon-' + principal.replace(/[^a-zA-Z0-9]/g, '_'));
+  'inner-demon-' + principalStr.replace(/[^a-zA-Z0-9]/g, '_'));
 var ccachePath = path.join(directory, 'ccache');
 process.env['KRB5CCNAME'] = 'FILE:' + ccachePath;
 
-zephyr.openPort();
-
 var commands = {};
 
-function updateCredentialCacheSync(cred) {
+function updateCredentialCacheSync(creds) {
   // Write the credential to the ccache. We do this synchronously to avoid
   // dealing having to deal with synchronization here. This should be
   // on a tmpfs, and everything here is for a single user anyway.
@@ -52,8 +52,14 @@ function updateCredentialCacheSync(cred) {
     header.writeUInt32BE(0, 12);  // uset_offset
     fs.writeSync(fd, header, 0, header.length);
 
-    writePrincipalSync(fd, cred.cname, cred.crealm);
-    writeCredentialSync(fd, cred);
+    var name = {
+      nameString: principal.name,
+      nameType: krb_proto.KRB_NT_PRINCIPAL
+    };
+    writePrincipalSync(fd, name, principal.realm);
+    creds.forEach(function(cred) {
+      writeCredentialSync(fd, cred);
+    });
   } catch(e) {
     fs.unlinkSync(ccachePath);
     throw e;
@@ -62,8 +68,13 @@ function updateCredentialCacheSync(cred) {
   }
 }
 
+// Before initializing libzephyr, write out a credential-less
+// ccache. Otherwise ZGetSender caches the wrong thing.
+updateCredentialCacheSync([]);
+zephyr.openPort();
+
 commands.subscribeTo = function(subs, cred) {
-  updateCredentialCacheSync(cred);
+  updateCredentialCacheSync([cred]);
   return Q.nfcall(zephyr.subscribeTo, subs);
 };
 
@@ -75,7 +86,7 @@ commands.expel = function() {
   // TODO(davidben): Session resumption and everything.
   return Q.nfcall(zephyr.cancelSubscriptions).then(function() {
   }, function(err) {
-    console.error("Could not cancel subs", principal, err);
+    console.error("Could not cancel subs", principalStr, err);
   }).finally(function() {
     // node-temp is messed up and can't delete temporary
     // directories. Blow away our ccache first.
