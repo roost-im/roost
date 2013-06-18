@@ -76,6 +76,10 @@ app.post('/api/v1/auth', function(req, res) {
     return;
   }
   db.getUser(principal).then(function(user) {
+    if (user == null)
+      throw new error.UserError(403, 'User does not exist');
+    return user;
+  }).then(function(user) {
     var token = auth.makeAuthToken(user);
     res.set('Content-Type', 'text/plain');
     res.send(200, token);
