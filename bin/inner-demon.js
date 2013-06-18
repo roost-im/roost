@@ -73,6 +73,17 @@ function updateCredentialCacheSync(creds) {
 updateCredentialCacheSync([]);
 zephyr.openPort();
 
+// Sanity check the sender.
+var zsender = zephyr.getSender();
+if (zsender != principalStr) {
+  // This should never happen. The only cause I can think of is if
+  // principal.js and the real MIT Kerberos principal
+  // (de)serialization code get out-of-sync.
+  console.error('Failed to initialize zephyr. Wanted %s, got %s',
+                zsender, principalStr);
+  process.exit(1);
+}
+
 commands.subscribeTo = function(subs, cred) {
   updateCredentialCacheSync([cred]);
   return Q.nfcall(zephyr.subscribeToSansDefaults, subs);
