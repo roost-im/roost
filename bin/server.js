@@ -75,7 +75,22 @@ app.post('/api/v1/auth', function(req, res) {
     res.send(400, 'Principal expected');
     return;
   }
-  db.getUser(principal).then(function(user) {
+
+  var userPromise;
+  if (req.body.createUser) {
+    // Create user and make default subs.
+    userPromise = db.getOrCreateUser(principal).then(function(user) {
+      if (!user.newUser)
+        return user;
+      return subscriber.addDefaultUserSubscriptions(user).then(function() {
+        return user;
+      });
+    });
+  } else {
+    userPromise = db.getUser(principal);
+  }
+
+  userPromise.then(function(user) {
     if (user == null)
       throw new error.UserError(403, 'User does not exist');
     return user;
