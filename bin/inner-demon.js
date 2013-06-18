@@ -75,7 +75,7 @@ zephyr.openPort();
 
 commands.subscribeTo = function(subs, cred) {
   updateCredentialCacheSync([cred]);
-  return Q.nfcall(zephyr.subscribeTo, subs);
+  return Q.nfcall(zephyr.subscribeToSansDefaults, subs);
 };
 
 commands.expel = function() {
