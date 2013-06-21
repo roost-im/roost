@@ -108,6 +108,41 @@ app.get('/api/v1/ping', requireUser, function(req, res) {
   res.json(200, { pong: 1 });
 });
 
+app.get('/api/v1/info', requireUser, function(req, res) {
+  db.getUserInfo(req.user).then(function(ret) {
+    res.json(200, ret);
+  }, function(err) {
+    sendError(res, err);
+    console.error(err);
+  }).done();
+});
+
+app.post('/api/v1/info', requireUser, function(req, res) {
+  if (typeof req.body.info != 'string' ||
+      typeof req.body.expectedVersion != 'number') {
+    res.send(400, 'info and expectedVersion required');
+    return;
+  }
+  db.updateUserInfo(
+    req.user, req.body.info, req.body.expectedVersion
+  ).then(function(updated) {
+    if (updated)
+      return { updated: true };
+    return db.getUserInfo(req.user).then(function(ret) {
+      return {
+        updated: false,
+        version: ret.version,
+        info: ret.info
+      };
+    });
+  }).then(function(ret) {
+    res.json(200, ret);
+  }, function(err) {
+    sendError(res, err);
+    console.error(err);
+  }).done();
+});
+
 app.get('/api/v1/subscriptions', requireUser, function(req, res) {
   db.getUserSubscriptions(req.user).then(function(subs) {
     res.json(200, subs);
@@ -118,7 +153,7 @@ app.get('/api/v1/subscriptions', requireUser, function(req, res) {
 });
 
 function isValidSub(sub) {
-  if (typeof sub !== "object")
+  if (typeof sub !== 'object')
     return false;
   if (typeof sub.class !== 'string')
     return false;
