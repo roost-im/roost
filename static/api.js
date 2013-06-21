@@ -79,8 +79,9 @@ API.prototype.refreshAuthToken_ = function() {
   // a dialog (with a button to Webathena) when cached tickets expire.
   return corsRequest("POST", this.urlBase_ + "/api/v1/auth", {
     principal: "davidben@ATHENA.MIT.EDU"
-  }).then(function(token) {
-    this.token_ = token.replace(/\s+$/, "");
+  }).then(function(json) {
+    var resp = JSON.parse(json);
+    this.token_ = resp.authToken;
     return this.token_;
   }.bind(this));
 };

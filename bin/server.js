@@ -77,6 +77,7 @@ function requireUser(req, res, next) {
 }
 
 app.post('/api/v1/auth', function(req, res) {
+  var principal, respTokenB64;
   if (realAuth) {
     if (typeof req.body.token !== 'string') {
       res.send(400, 'Token expected');
@@ -101,9 +102,10 @@ app.post('/api/v1/auth', function(req, res) {
       return;
     }
 
-    var principal = context.srcName().toString();
+    principal = context.srcName().toString();
+    respTokenB64 = respToken.toString('base64');
   } else {
-    var principal = req.body.principal;
+    principal = req.body.principal;
     if (typeof principal !== "string") {
       res.send(400, 'Principal expected');
       return;
@@ -129,11 +131,11 @@ app.post('/api/v1/auth', function(req, res) {
       throw new error.UserError(403, 'User does not exist');
     return user;
   }).then(function(user) {
-    // TODO(davidben): Return JSON here too and spit out the response
-    // token.
     var token = auth.makeAuthToken(user);
-    res.set('Content-Type', 'text/plain');
-    res.send(200, token);
+    res.json(200, {
+      gssToken: respTokenB64,
+      authToken: token
+    });
   }, function(err) {
     sendError(res, err);
     console.error(err);
