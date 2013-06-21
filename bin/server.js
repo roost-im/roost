@@ -1,4 +1,5 @@
 var express = require('express');
+var gss = require('gss');
 var http = require('http');
 var path = require('path');
 var util = require('util');
@@ -76,11 +77,37 @@ function requireUser(req, res, next) {
 }
 
 app.post('/api/v1/auth', function(req, res) {
-  // TODO(davidben): Real authentication!
-  var principal = req.body.principal;
-  if (typeof principal !== "string") {
-    res.send(400, 'Principal expected');
-    return;
+  if (realAuth) {
+    if (typeof req.body.token !== 'string') {
+      res.send(400, 'Token expected');
+      return;
+    }
+
+    var context = gss.createAcceptor(null);
+    try {
+      var respToken =
+        context.acceptSecContext(new Buffer(req.body.token, 'base64'));
+    } catch (e) {
+      res.send(403, 'Bad token');
+      console.error(e);
+      return;
+    }
+
+    if (!context.isEstablished()) {
+      // We don't support multi-legged auth. But this shouldn't
+      // happen.
+      res.send(500, 'Internal error');
+      console.error('ERROR: GSS context did not establish in iteration!');
+      return;
+    }
+
+    var principal = context.srcName().toString();
+  } else {
+    var principal = req.body.principal;
+    if (typeof principal !== "string") {
+      res.send(400, 'Principal expected');
+      return;
+    }
   }
 
   var userPromise;
@@ -102,6 +129,8 @@ app.post('/api/v1/auth', function(req, res) {
       throw new error.UserError(403, 'User does not exist');
     return user;
   }).then(function(user) {
+    // TODO(davidben): Return JSON here too and spit out the response
+    // token.
     var token = auth.makeAuthToken(user);
     res.set('Content-Type', 'text/plain');
     res.send(200, token);
