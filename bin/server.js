@@ -11,6 +11,13 @@ var error = require('../lib/error.js');
 var msgid = require('../lib/msgid.js');
 var Subscriber = require('../lib/subscriber.js').Subscriber;
 
+// Set the keytab.
+var realAuth = false;
+if (conf.get('keytab')) {
+  process.env['KRB5_KTNAME'] = conf.get('keytab');
+  realAuth = true;
+}
+
 function sendError(res, err) {
   if (err instanceof error.UserError) {
     // Blegh.
