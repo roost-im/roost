@@ -14,10 +14,16 @@
     "client-sessions": "git+https://github.com/mozilla/node-client-sessions.git#7eed6ab89b85501c2425533e6cf9081d56a2df39"
   },
   "scripts": {},
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/davidben/roost.git"
+  },
   "author": "David Benjamin <davidben@mit.edu>",
   "license": "MIT",
   "devDependencies": {
     "priorityqueuejs": "~0.1.0"
+  },
+  "bugs": {
+    "url": "https://github.com/davidben/roost/issues"
   }
 }
