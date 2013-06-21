@@ -103,7 +103,8 @@ app.post('/api/v1/auth', function(req, res) {
     }
 
     principal = context.srcName().toString();
-    respTokenB64 = respToken.toString('base64');
+    if (respToken != null)
+      respTokenB64 = respToken.toString('base64');
   } else {
     principal = req.body.principal;
     if (typeof principal !== "string") {
