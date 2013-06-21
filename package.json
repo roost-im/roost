@@ -11,7 +11,7 @@
     "zephyr": "git://github.com/davidben/node-zephyr.git",
     "convict": "~0.2.3",
     "temp": "~0.5.0",
-    "client-sessions": "~0.3.1"
+    "client-sessions": "git+https://github.com/mozilla/node-client-sessions.git#7eed6ab89b85501c2425533e6cf9081d56a2df39"
   },
   "scripts": {},
   "repository": "",
