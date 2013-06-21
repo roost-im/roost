@@ -4,6 +4,7 @@
   "dependencies": {
     "jquery": "~2.0.1",
     "q": "~0.9.4",
-    "winchan": "https://github.com/lloyd/winchan.git"
+    "winchan": "https://github.com/lloyd/winchan.git",
+    "webathena": "https://github.com/davidben/webathena.git"
   }
 }
