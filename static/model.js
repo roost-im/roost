@@ -20,11 +20,6 @@ MessageModel.prototype.compareMessages = function(a, b) {
   return a.receiveTime - b.receiveTime;
 };
 
-// TODO(davidben): This really really should be state that's attached
-// to the socket. Wrap io.socket's objects in some wrapper that
-// maintains a |nextTailId_| property.
-var nextTailId = 1;
-
 function MessageTail(model, start, inclusive, cb) {
   this.model_ = model;
   // The last thing we sent.
@@ -89,7 +84,7 @@ MessageTail.prototype.close = function() {
 };
 MessageTail.prototype.createTail_ = function() {
   if (this.socket_) {
-    this.tailId_ = nextTailId++;
+    this.tailId_ = this.model_.api_.allocateTailId();
     this.messagesSentRecent_ = 0;  // New tail, so we reset offset.
     this.lastExtend_ = -1;  // Also reset what we've requested.
     this.socket_.emit("new-tail",

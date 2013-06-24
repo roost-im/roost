@@ -65,6 +65,7 @@ function API(urlBase) {
   this.socketPending_ = false;
   this.reconnectDelay_ = RECONNECT_DELAY;
   this.reconnectTries_ = RECONNECT_TRIES;
+  this.nextTailId_ = 1;
 
   this.tryConnectSocket_();
 
@@ -130,6 +131,10 @@ API.prototype.post = function(path, data) {
 
 API.prototype.socket = function() {
   return this.socket_;
+};
+
+API.prototype.allocateTailId = function() {
+  return this.nextTailId_++;
 };
 
 API.prototype.tryConnectSocket_ = function() {
