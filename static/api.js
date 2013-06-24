@@ -59,7 +59,8 @@ var RECONNECT_TRIES = 10;
 function API(urlBase) {
   io.EventEmitter.call(this);
   this.urlBase_ = urlBase;
-  this.token_ = null;
+
+  this.tokenPromise_ = null;
 
   this.socket_ = null;
   this.socketPending_ = false;
@@ -75,6 +76,10 @@ function API(urlBase) {
 API.prototype = Object.create(io.EventEmitter.prototype);
 
 API.prototype.refreshAuthToken_ = function() {
+  // TODO(davidben): On auth error, reject the ticket and wait for a
+  // new one. And on other errors, some sort of exponential back-off I
+  // guess.
+  //
   // TODO(davidben): Actually authenticate and stuff. This will
   // potentially require emitting an event or something else to pop up
   // a dialog (with a button to Webathena) when cached tickets expire.
@@ -82,20 +87,24 @@ API.prototype.refreshAuthToken_ = function() {
     principal: "davidben@ATHENA.MIT.EDU"
   }).then(function(json) {
     var resp = JSON.parse(json);
-    this.token_ = resp.authToken;
-    return this.token_;
+    return resp.authToken;
   }.bind(this));
 };
 
-API.prototype.badToken_ = function() {
+API.prototype.badToken_ = function(token) {
   console.log("Bad token!");
-  this.token_ = null;
+  if (this.tokenPromise_ &&
+      Q.isFulfilled(this.tokenPromise_) &&
+      this.tokenPromise_.valueOf() == token) {
+    this.tokenPromise_ = null;
+  }
 };
 
 API.prototype.getAuthToken_ = function() {
-  if (this.token_)
-    return Q(this.token_);
-  return this.refreshAuthToken_();
+  if (this.tokenPromise_ == null) {
+    this.tokenPromise_ = this.refreshAuthToken_();
+  }
+  return this.tokenPromise_;
 };
 
 API.prototype.request = function(method, path, params, data, isRetry) {
@@ -110,7 +119,7 @@ API.prototype.request = function(method, path, params, data, isRetry) {
     }, function(err) {
       // 401 means we had a bad token (it may have expired). Refresh it.
       if (err instanceof HttpError && err.status == 401) {
-        this.badToken_();
+        this.badToken_(token);
         // TODO(davidben): Retry the request after we get a new
         // one. Only retry it once though.
         if (!isRetry)
@@ -176,7 +185,7 @@ API.prototype.tryConnectSocket_ = function() {
       this.socketPending_ = false;
       // Blegh. Retry with a new token.
       if (err == "handshake unauthorized") {
-        this.badToken_();
+        this.badToken_(token);
       }
 
       // Reconnect with exponential back-off.
