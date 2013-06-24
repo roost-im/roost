@@ -14,9 +14,14 @@ var Subscriber = require('../lib/subscriber.js').Subscriber;
 
 // Set the keytab.
 var realAuth = false;
-if (conf.get('keytab')) {
-  process.env['KRB5_KTNAME'] = conf.get('keytab');
+if (conf.get('serverKeytab')) {
+  process.env['KRB5_KTNAME'] = conf.get('serverKeytab');
   realAuth = true;
+} else {
+  console.error('!!!!!!!!!!!!!!!!!!!!!');
+  console.error('No keytab set. Using fake authentication');
+  console.error('Do NOT run this in production!');
+  console.error('!!!!!!!!!!!!!!!!!!!!!');
 }
 
 function sendError(res, err) {
