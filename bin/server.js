@@ -43,7 +43,22 @@ var subscriber = new Subscriber();
 
 var app = express();
 
+app.use(function(req, res, next) {
+  // Pretend a text/plain Content-Type is actually
+  // application/json. This is a silly hack to avoid a CORS preflight
+  // request. Apart from three whitelisted Content-Type values, other
+  // settings require a CORS preflight to avoid introducing CSRF
+  // vulnerabilities in existing AJAX applications. We don't assume a
+  // JSON content-type is same-origin, so it's fine for us.
+  //
+  // In addition, this hack is required for IE9 because XDomainRequest
+  // predates CORS and can only send text/plain anyway.
+  if (req.headers['content-type'] === 'text/plain')
+    req.headers['content-type'] = 'application/json;charset=utf-8';
+  next();
+});
 app.use(express.bodyParser());
+
 // CORS ALL THE THINGS. We won't use cookies and this is different
 // from Access-Control-Allow-Credentials. So we're fine.
 app.use(function(req, res, next) {
