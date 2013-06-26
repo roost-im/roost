@@ -323,8 +323,8 @@ MessageView.prototype.prependMessages_ = function(msgs, isDone) {
   this.checkBuffers_();
 };
 
-var COLORS = ["black", "silver", "gray", "white", "maroon", "red",
-              "purple", "fuchsia", "green", "lime"];
+var COLORS = ["black", "maroon", "red",
+              "purple", "fuchsia", "green", "blue"];
 MessageView.prototype.formatMessage_ = function(idx, msg) {
   var pre = document.createElement("pre");
   var indented = "   " +
@@ -338,7 +338,7 @@ MessageView.prototype.formatMessage_ = function(idx, msg) {
   if (number == undefined) {
     // Hash the class + instance, I guess...
     number = 0;
-    var s = msg.class + "|" + msg.instance;
+    var s = msg.classKey + "|" + msg.instanceKey;
     for (var i = 0; i < s.length; i++) {
       // Dunno, borrowed from some random thing on the Internet that
       // claims to be Java's.
