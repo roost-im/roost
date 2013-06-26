@@ -42,10 +42,12 @@ function corsRequest(method, url, data) {
   };
 
   if (data !== undefined) {
-    // TODO(davidben): Make the server handle text/plain Content-Types
-    // too for IE9.
+    // The server accepts text/plain as application/json. For CORS as
+    // an optimization to avoid the preflight. For IE9
+    // (XDomainRequest) as a necessity. (It accepts application/json
+    // just fine too, of course.)
     if (xhr.setRequestHeader)
-      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.setRequestHeader("Content-Type", "text/plain");
     xhr.send(JSON.stringify(data));
   } else {
     xhr.send();
