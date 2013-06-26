@@ -59,6 +59,14 @@ app.use(function(req, res, next) {
 });
 app.use(express.bodyParser());
 
+// Don't cache anything. This is an API.
+app.use(function(req, res, next) {
+  // TODO(davidben): This doesn't get at the socket.io entry points,
+  // which still contains an access_token query parameter.
+  res.set('Cache-Control', 'no-cache,no-store,private');
+  next();
+});
+
 // CORS ALL THE THINGS. We won't use cookies and this is different
 // from Access-Control-Allow-Credentials. So we're fine.
 app.use(function(req, res, next) {
