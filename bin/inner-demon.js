@@ -111,7 +111,6 @@ commands.expel = function() {
 };
 
 process.on('message', function(m) {
-  console.dir(m);
   var id = m.id;
   if (commands[m.cmd]) {
     Q.fapply(commands[m.cmd], m.args).then(function(ret) {
