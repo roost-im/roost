@@ -334,12 +334,6 @@ app.post('/api/v1/zephyrcreds', requireUser, function(req, res) {
   }).done();
 });
 
-if (!conf.get('production')) {
-  // TODO(davidben): Remove this altogether. We should be stressing
-  // CORS in development too.
-  app.use(express.static(path.join(__dirname, '../static')));
-}
-
 var server = http.createServer(app);
 var connectionManager = connections.listen(server, subscriber);
 

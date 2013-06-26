@@ -1,1 +1,0 @@
-../components/q/q.js
