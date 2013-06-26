@@ -65,7 +65,7 @@ app.use(function(req, res, next) {
   res.set('Access-Control-Allow-Origin', '*');
   // TODO(davidben): Unfortunately, using JSON as the Content-Type
   // doesn't save us from preflights.
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   next();
 });
 // Just accept the preflight everywhere. Whatever.
@@ -74,23 +74,36 @@ app.options('*', function(req, res) {
   res.send(200);
 });
 
-function requireUser(req, res, next) {
+function extractBearerToken(req) {
   // IE9 CORS (really XDomainRequest) doesn't allow custom headers.
   // And even with CORS, an Authorization header would require a
   // preflight. Allow passing the token in the query string. Google
   // does this for their APIs.
   //
-  // TODO(davidben): Allow passing it into the Authorization header
-  // anyway. Non-browser clients might appreciate a more HTTP-like
-  // header. Google uses
-  //
-  //   Authorization: Bearer ${token}
-  //
-  // which seems sane enough. But to be Proper, I ought to look up
-  // exactly how to parse those.
-  //
   // See http://self-issued.info/docs/draft-ietf-oauth-v2-bearer.html
-  var token = req.query.access_token;
+
+  // Authorization Request Header Field
+  var authorization = req.get('Authorization');
+  if (authorization) {
+    var m = /^Bearer +(.*)$/.exec(authorization);
+    if (m)
+      return m[1];
+  }
+
+  // TODO(davidben): Implement the "Form-Encoded Body Parameter" while
+  // we're at it? Doesn't seem much point, since we don't use
+  // application/x-www-form-urlencoded. Doing the equivalent for JSON
+  // is not insane though.
+
+  // URI Query Parameter
+  if (req.query.access_token)
+    return req.query.access_token;
+
+  return null;
+}
+
+function requireUser(req, res, next) {
+  var token = extractBearerToken(req);
   if (!token) {
     // Appease the HTTP gods who say you need a WWW-Authenticate
     // header when you send back 401. Hopefully this'll prevent a
