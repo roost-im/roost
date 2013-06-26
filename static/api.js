@@ -95,7 +95,9 @@ API.prototype.refreshAuthToken_ = function(interactive) {
     // I guess.
     return corsRequest("POST", this.urlBase_ + "/api/v1/auth", {
       principal: ticket.client.toString(),
-      token: gssToken
+      token: gssToken,
+      // TODO(davidben): Only do this for the initial one?
+      createUser: true
     });
   }.bind(this)).then(function(json) {
     var resp = JSON.parse(json);
