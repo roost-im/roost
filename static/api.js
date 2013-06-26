@@ -41,8 +41,6 @@ function corsRequest(method, url, data) {
     deferred.reject("Request failed");
   };
 
-  if (xhr.setRequestHeader)
-    xhr.setRequestHeader("Cache-Control", "no-store");
   if (data !== undefined) {
     // The server accepts text/plain as application/json. For CORS as
     // an optimization to avoid the preflight. For IE9
