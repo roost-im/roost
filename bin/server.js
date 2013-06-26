@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var express = require('express');
 var gss = require('gss');
 var http = require('http');
