@@ -55,7 +55,6 @@ document.getElementById("subscribe").addEventListener("submit", function(ev) {
 
   var msgClass = this.class.value;
   var msgInstance = this.instance.value;
-  if (msgInstance == '*') msgInstance = null; // Meh.
   var msgRecipient = this.recipient.value;
   if (msgRecipient == "%me%")
     msgRecipient = "davidben@ATHENA.MIT.EDU";
@@ -84,7 +83,6 @@ document.getElementById("unsubscribe").addEventListener("submit", function(ev) {
 
   var msgClass = this.class.value;
   var msgInstance = this.instance.value;
-  if (msgInstance == '*') msgInstance = null; // Meh.
   var msgRecipient = this.recipient.value;
   if (msgRecipient == "%me%")
     msgRecipient = "davidben@ATHENA.MIT.EDU";
@@ -155,8 +153,7 @@ function log(msg) {
   api.get("/api/v1/subscriptions").then(function(subs) {
     log("Currently subscribed to:");
     subs.forEach(function(sub) {
-      var inst = sub.instance == null ? '*' : sub.instance;
-      log(" <" + sub.class + "," + inst + "," + sub.recipient + ">");
+      log(" <" + sub.class + "," + sub.instance + "," + sub.recipient + ">");
     });
   }, function(err) {
     log("Failed to get subscriptions: " + err);

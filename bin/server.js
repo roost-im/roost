@@ -249,7 +249,7 @@ function isValidSub(sub) {
     return false;
   if (typeof sub.class !== 'string')
     return false;
-  if (sub.instance !== null && typeof sub.instance !== 'string')
+  if (typeof sub.instance !== 'string')
     return false;
   if (typeof sub.recipient !== 'string')
     return false;
