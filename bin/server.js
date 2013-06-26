@@ -46,7 +46,15 @@ app.use(express.bodyParser());
 // from Access-Control-Allow-Credentials. So we're fine.
 app.use(function(req, res, next) {
   res.set('Access-Control-Allow-Origin', '*');
+  // TODO(davidben): Unfortunately, using JSON as the Content-Type
+  // doesn't save us from preflights.
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
   next();
+});
+// Just accept the preflight everywhere. Whatever.
+app.options('*', function(req, res) {
+  // Pick up the headers from earlier.
+  res.send(200);
 });
 
 function requireUser(req, res, next) {
