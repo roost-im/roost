@@ -24,6 +24,8 @@ if (conf.get('serverKeytab')) {
   console.error('No keytab set. Using fake authentication');
   console.error('Do NOT run this in production!');
   console.error('!!!!!!!!!!!!!!!!!!!!!');
+  if (conf.get('production'))
+    process.exit(1);
 }
 
 function sendError(res, err) {
@@ -296,7 +298,11 @@ app.post('/api/v1/zephyrcreds', requireUser, function(req, res) {
   }).done();
 });
 
-app.use(express.static(path.join(__dirname, '../static')));
+if (!conf.get('production')) {
+  // TODO(davidben): Remove this altogether. We should be stressing
+  // CORS in development too.
+  app.use(express.static(path.join(__dirname, '../static')));
+}
 
 var server = http.createServer(app);
 var connectionManager = connections.listen(server, subscriber);
