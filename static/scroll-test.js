@@ -146,9 +146,45 @@ MockMessageTail.prototype.fireRequest_ = function(immediate) {
   }.bind(this), immediate ? 0 : 500);
 };
 
-var api, model, messageView, selectionTracker;  // For debugging.
+var api, model, messageView, selectionTracker, ticketManager;  // For debugging.
 $(function() {
-  api = new API(location.protocol + "//" + location.host);
+  ticketManager = new TicketManager("https://webathena.mit.edu");
+
+  var dialog = null;
+  ticketManager.on("ticket-needed", function() {
+    if (dialog)
+      return;
+    var dialogTemplate = document.getElementById(
+      ticketManager.isLoggedIn() ? "renew-template" : "login-template");
+    dialog = dialogTemplate.cloneNode(true);
+    dialog.id = null;
+    dialog.removeAttribute("hidden");
+
+    dialog.querySelector(".login-button").addEventListener("click", function(ev) {
+      ticketManager.ticketPromptIfNeeded();
+    });
+
+    // Close the dialog when we get our tickets.
+    Q.all(
+      [ticketManager.getTicket("server"), ticketManager.getTicket("zephyr")]
+    ).then(function() {
+      document.body.removeChild(dialog);
+      dialog = null;
+    }).done();
+
+    document.body.appendChild(dialog);
+  });
+  ticketManager.on("user-mismatch", function() {
+    console.log("User mismatch do something useful");
+  });
+  ticketManager.on("webathena-error", function() {
+    console.log("Webathena error do something useful");
+  });
+
+
+  api = new API(location.protocol + "//" + location.host,
+                "HTTP/roost-api.mit.edu",
+                ticketManager);
   model = new MessageModel(api);
   messageView = new MessageView(model, document.getElementById("messagelist"));
   selectionTracker = new SelectionTracker(messageView);

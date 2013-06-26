@@ -3,9 +3,22 @@
   <head>
     <meta charset="utf-8">
     <title>Roost</title>
+    <link rel="stylesheet" href="/style.css">
+
+    <script src="/polyfills.js"></script>
+
     <script src="/q.js"></script>
+    <script src="/jquery.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/winchan.js"></script>
+
+    <script src="/cryptojs-des.js"></script>
+    <script src="/sjcl.js"></script>
+
+    <script src="/webathena.js"></script>
+    <script src="/gss.js"></script>
+
+    <script src="/tickets.js"></script>
     <script src="/api.js"></script>
   </head>
   <style>
@@ -36,6 +49,27 @@
     <button id="checkdemon">Check inner demon</button>
     <button id="refreshcreds">Refresh zephyr creds</button>
     <pre id="log"></pre>
+
+    <div id="renew-template" hidden>
+      <div class="dialog-overlay"></div>
+      <div class="dialog-dummy-parent">
+        <div class="dialog">
+          <p>Your login has expired</p>
+          <button class="login-button">Renew login</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="login-template" hidden>
+      <div class="dialog-overlay"></div>
+      <div class="dialog-dummy-parent">
+        <div class="dialog">
+          <p>Welcome to roost</p>
+          <button class="login-button">Login</button>
+        </div>
+      </div>
+    </div>
+
     <script src="/api-test.js"></script>
   </body>
 </html>

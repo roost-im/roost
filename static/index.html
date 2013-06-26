@@ -18,15 +18,37 @@
     <script src="/webathena.js"></script>
     <script src="/gss.js"></script>
 
+    <script src="/tickets.js"></script>
     <script src="/api.js"></script>
     <script src="/model.js"></script>
-    <script src="/messageview.js"></script>
     <script src="/colors.js"></script>
     <script src="/ztext.js"></script>
+    <script src="/messageview.js"></script>
+
     <script src="/scroll-test.js"></script>
   </head>
   <body>
     <div id="messagelist">
+    </div>
+
+    <div id="renew-template" hidden>
+      <div class="dialog-overlay"></div>
+      <div class="dialog-dummy-parent">
+        <div class="dialog">
+          <p>Your login has expired</p>
+          <button class="login-button">Renew login</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="login-template" hidden>
+      <div class="dialog-overlay"></div>
+      <div class="dialog-dummy-parent">
+        <div class="dialog">
+          <p>Welcome to roost</p>
+          <button class="login-button">Login</button>
+        </div>
+      </div>
     </div>
   </body>
 </html>

@@ -1,36 +1,38 @@
-var api = new API(location.protocol + "//" + location.host);
+var ticketManager = new TicketManager("https://webathena.mit.edu");
+var api = new API(location.protocol + "//" + location.host,
+                  "HTTP/roost-api.mit.edu",
+                  ticketManager);
 
-var creds = null;
-function getZephyrCreds() {
-  if (creds)
-    return Q(creds);
-  var deferred = Q.defer();
-  WinChan.open({
-    url: "https://webathena.mit.edu/#!request_ticket_v1",
-    relay_url: "https://webathena.mit.edu/relay.html",
-    params: {
-      services: [
-        {
-          realm: 'ATHENA.MIT.EDU',
-          principal: ['zephyr', 'zephyr'],
-        }
-      ]
-    }
-  }, function (err, r) {
-    console.log("got reply", err, r);
-    if (err) {
-      deferred.reject(err);
-      return;
-    }
-    if (r.status !== "OK") {
-      deferred.reject(r);
-      return;
-    }
-    creds = r.sessions[0];
-    deferred.resolve(creds);
+var dialog = null;
+ticketManager.on("ticket-needed", function() {
+  if (dialog)
+    return;
+  var dialogTemplate = document.getElementById(
+    ticketManager.isLoggedIn() ? "renew-template" : "login-template");
+  dialog = dialogTemplate.cloneNode(true);
+  dialog.id = null;
+  dialog.removeAttribute("hidden");
+
+  dialog.querySelector(".login-button").addEventListener("click", function(ev) {
+    ticketManager.ticketPromptIfNeeded();
   });
-  return deferred.promise;
-}
+
+  // Close the dialog when we get our tickets.
+  Q.all(
+    [ticketManager.getTicket("server"), ticketManager.getTicket("zephyr")]
+  ).then(function() {
+    document.body.removeChild(dialog);
+    dialog = null;
+  }).done();
+
+  document.body.appendChild(dialog);
+});
+ticketManager.on("user-mismatch", function() {
+  console.log("User mismatch do something useful");
+});
+ticketManager.on("webathena-error", function() {
+  console.log("Webathena error do something useful");
+});
 
 function checkCreds() {
   api.get("/api/v1/zephyrcreds").then(function(result) {
@@ -58,24 +60,19 @@ document.getElementById("subscribe").addEventListener("submit", function(ev) {
   if (msgRecipient == "%me%")
     msgRecipient = "davidben@ATHENA.MIT.EDU";
 
-  var credsPromise;
-  if (msgRecipient && msgRecipient[0] !== '@') {
-    credsPromise = getZephyrCreds();
-  } else {
-    credsPromise = Q();
-  }
-  credsPromise.then(function(creds) {
-    var data = {
-      subscription: {
-        class: msgClass,
-        instance: msgInstance,
-        recipient: msgRecipient
-      },
-      credentials: creds
-    };
-    return api.post("/api/v1/subscribe", data).then(function() {
-      log("Subscribed to " + msgClass);
-    });
+  var withZephyr = (msgRecipient && msgRecipient[0] !== '@') ? true : false;
+  var data = {
+    subscription: {
+      class: msgClass,
+      instance: msgInstance,
+      recipient: msgRecipient
+    },
+  };
+  return api.post("/api/v1/subscribe", data, {
+    withZephyr: withZephyr,
+    interactive: true
+  }).then(function() {
+    log("Subscribed to " + msgClass);
   }, function(err) {
     log("Failed to subscribed to " + msgClass + ": " + err);
     throw err;
@@ -99,7 +96,7 @@ document.getElementById("unsubscribe").addEventListener("submit", function(ev) {
       recipient: msgRecipient
     }
   };
-  api.post("/api/v1/unsubscribe", data).then(function() {
+  api.post("/api/v1/unsubscribe", data, {interactive:true}).then(function() {
     log("Unsubscribed from " + msgClass);
   }, function(err) {
     log("Failed to unsubscribed from " + msgClass + ": " + err);
@@ -114,7 +111,9 @@ document.getElementById("getmessages").addEventListener("submit", function(ev) {
     offset: this.offset.value,
     count: '10'
   };
-  api.get("/api/v1/messages", params).then(function(result) {
+  api.get("/api/v1/messages", params, {
+    interactive:true
+  }).then(function(result) {
     result.messages.forEach(function(msg) {
       log(msg.id + ": " + msg.class + " / " + msg.instance + " / " +
           msg.sender + " " + new Date(msg.time) + "\n" +
@@ -126,7 +125,7 @@ document.getElementById("getmessages").addEventListener("submit", function(ev) {
 });
 
 document.getElementById("checkdemon").addEventListener("click", function(ev) {
-  api.get("/api/v1/zephyrcreds").then(function(result) {
+  api.get("/api/v1/zephyrcreds", {}, {interactive:true}).then(function(result) {
     if (result.needsRefresh) {
       log("Needs credential refresh");
     } else {
@@ -138,10 +137,11 @@ document.getElementById("checkdemon").addEventListener("click", function(ev) {
 });
 
 document.getElementById("refreshcreds").addEventListener("click", function(ev) {
-  getZephyrCreds().then(function(creds) {
-    return api.post("/api/v1/zephyrcreds", {credentials: creds});
+  api.post("/api/v1/zephyrcreds", {}, {
+    withZephyr: true,
+    interactive: true
   }).then(function() {
-      log("Refreshed");
+    log("Refreshed");
   }, function(err) {
     log("Error refreshing creds: " + err);
   }).done();

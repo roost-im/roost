@@ -1,3 +1,5 @@
+[hidden] { display: none !important }
+
 /* Random styling just to position some random box*/
 html, body {
   height: 100%;
@@ -72,4 +74,24 @@ pre { padding: 0; margin: 0 }
 }
 .msgview-bottom-spacer {
   height: 50%;
+}
+
+.dialog-overlay {
+  opacity: 0.85;
+  background-color: #000;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+}
+.dialog-dummy-parent {
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  padding: 5px;
+}
+.dialog {
+  border-radius: 5px;
+  margin: 20px auto 0 auto;
+  max-width: 500px;
+  padding: 10px;
+  background-color: white;
+  color:black;
 }
