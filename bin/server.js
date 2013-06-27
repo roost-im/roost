@@ -142,8 +142,10 @@ app.post('/api/v1/auth', function(req, res) {
       var respToken =
         context.acceptSecContext(new Buffer(req.body.token, 'base64'));
     } catch (e) {
+      // TODO(davidben): Get the KRB_ERROR out and send it back or
+      // something.
       res.send(403, 'Bad token');
-      console.error(e);
+      console.error(e.toString(), e);
       return;
     }
 
