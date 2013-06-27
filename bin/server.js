@@ -53,7 +53,7 @@ app.use(function(req, res, next) {
   //
   // In addition, this hack is required for IE9 because XDomainRequest
   // predates CORS and can only send text/plain anyway.
-  if (req.headers['content-type'] === 'text/plain')
+  if (/^text\/plain($|;)/.test(req.headers['content-type']))
     req.headers['content-type'] = 'application/json;charset=utf-8';
   next();
 });
