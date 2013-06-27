@@ -217,3 +217,10 @@ function writeCredentialSync(fd, cred) {
 process.on('SIGINT', function() {
   console.log('Inner demon ignoring SIGINT');
 });
+
+process.on('disconnect', function() {
+  console.log('Parent process disconnected');
+  commands.expel().finally(function() {
+    process.exit();
+  }).done();
+});
