@@ -129,7 +129,7 @@ function requireUser(req, res, next) {
   });
 }
 
-app.post('/api/v1/auth', function(req, res) {
+app.post('/v1/auth', function(req, res) {
   var principal, respTokenB64;
   if (realAuth) {
     if (typeof req.body.token !== 'string') {
@@ -198,11 +198,11 @@ app.post('/api/v1/auth', function(req, res) {
   }).done();
 });
 
-app.get('/api/v1/ping', requireUser, function(req, res) {
+app.get('/v1/ping', requireUser, function(req, res) {
   res.json(200, { pong: 1 });
 });
 
-app.get('/api/v1/info', requireUser, function(req, res) {
+app.get('/v1/info', requireUser, function(req, res) {
   db.getUserInfo(req.user).then(function(ret) {
     res.json(200, ret);
   }, function(err) {
@@ -211,7 +211,7 @@ app.get('/api/v1/info', requireUser, function(req, res) {
   }).done();
 });
 
-app.post('/api/v1/info', requireUser, function(req, res) {
+app.post('/v1/info', requireUser, function(req, res) {
   if (typeof req.body.info != 'string' ||
       typeof req.body.expectedVersion != 'number') {
     res.send(400, 'info and expectedVersion required');
@@ -237,7 +237,7 @@ app.post('/api/v1/info', requireUser, function(req, res) {
   }).done();
 });
 
-app.get('/api/v1/subscriptions', requireUser, function(req, res) {
+app.get('/v1/subscriptions', requireUser, function(req, res) {
   db.getUserSubscriptions(req.user).then(function(subs) {
     res.json(200, subs);
   }, function(err) {
@@ -258,7 +258,7 @@ function isValidSub(sub) {
   return true;
 }
 
-app.post('/api/v1/subscribe', requireUser, function(req, res) {
+app.post('/v1/subscribe', requireUser, function(req, res) {
   if (!isValidSub(req.body.subscription)) {
     // TODO(davidben): Nicer error message.
     res.send(400, 'Subscription triple expected');
@@ -274,7 +274,7 @@ app.post('/api/v1/subscribe', requireUser, function(req, res) {
   }).done();
 });
 
-app.post('/api/v1/unsubscribe', requireUser, function(req, res) {
+app.post('/v1/unsubscribe', requireUser, function(req, res) {
   if (!isValidSub(req.body.subscription)) {
     // TODO(davidben): Nicer error message.
     res.send(400, 'Subscription triple expected');
@@ -291,7 +291,7 @@ app.post('/api/v1/unsubscribe', requireUser, function(req, res) {
   }).done();
 });
 
-app.get('/api/v1/messages', requireUser, function(req, res) {
+app.get('/v1/messages', requireUser, function(req, res) {
   var offset = req.query.offset;
   if (offset) {
     offset = msgid.unseal(offset);
@@ -316,13 +316,13 @@ app.get('/api/v1/messages', requireUser, function(req, res) {
   }).done();
 });
 
-app.get('/api/v1/zephyrcreds', requireUser, function(req, res) {
+app.get('/v1/zephyrcreds', requireUser, function(req, res) {
   res.json(200, {
     needsRefresh: subscriber.needsZephyrCreds(req.user)
   });
 });
 
-app.post('/api/v1/zephyrcreds', requireUser, function(req, res) {
+app.post('/v1/zephyrcreds', requireUser, function(req, res) {
   if (!req.body.credentials) {
     res.send(400, "Missing credentials parameter");
   }
