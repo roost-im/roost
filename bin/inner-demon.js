@@ -85,9 +85,25 @@ if (zsender != principalStr) {
   process.exit(1);
 }
 
+var started = false;
+commands.start = function(sessionState) {
+  if (started)
+    throw "Already started";
+  if (sessionState) {
+    zephyr.loadSession(new Buffer(sessionState, 'base64'));
+  } else {
+    zephyr.openPort();
+  }
+  started = true;
+};
+
 commands.subscribeTo = function(subs, cred) {
   updateCredentialCacheSync([cred]);
   return Q.nfcall(zephyr.subscribeToSansDefaults, subs);
+};
+
+commands.dumpSession = function() {
+  return zephyr.dumpSession().toString('base64');
 };
 
 commands.expel = function() {
