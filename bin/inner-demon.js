@@ -108,23 +108,17 @@ commands.dumpSession = function() {
 
 commands.expel = function() {
   console.log('Inner demon exiting');
-  // Attempt to cancel subs if we can from our tickets, just so I
-  // don't leave all these things open in development.
+  // We intentionally /don't/ cancel subscriptions. Instead, the
+  // session state is preserved for later.
+
+  // node-temp is messed up and can't delete temporary
+  // directories. Blow away our ccache first.
   //
-  // TODO(davidben): Session resumption and everything.
-  return Q.nfcall(zephyr.cancelSubscriptions).then(function() {
-  }, function(err) {
-    console.error("Could not cancel subs", principalStr, err);
-  }).finally(function() {
-    // node-temp is messed up and can't delete temporary
-    // directories. Blow away our ccache first.
-    //
-    // TODO(davidben): Just write your own thing. Really.
-    try {
-      fs.unlinkSync(ccachePath);
-    } catch (e) {
-    }
-  });
+  // TODO(davidben): Just write your own thing. Really.
+  try {
+    fs.unlinkSync(ccachePath);
+  } catch (e) {
+  }
 };
 
 process.on('message', function(m) {
@@ -237,7 +231,7 @@ process.on('SIGINT', function() {
 
 process.on('disconnect', function() {
   console.log('Parent process disconnected');
-  commands.expel().finally(function() {
+  Q.invoke(commands, 'expel').finally(function() {
     process.exit();
   }).done();
 });
