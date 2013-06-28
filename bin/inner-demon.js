@@ -71,6 +71,7 @@ function updateCredentialCacheSync(creds) {
 // Before initializing libzephyr, write out a credential-less
 // ccache. Otherwise ZGetSender caches the wrong thing.
 updateCredentialCacheSync([]);
+zephyr.initialize();
 zephyr.openPort();
 
 // Sanity check the sender.
