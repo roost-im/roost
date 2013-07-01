@@ -11,8 +11,7 @@
     "convict": "~0.3.3",
     "temp": "~0.5.0",
     "client-sessions": "git+https://github.com/mozilla/node-client-sessions.git#7eed6ab89b85501c2425533e6cf9081d56a2df39",
-    "sockjs": "~0.3.7",
-    "rbytes": "0.0.2"
+    "sockjs": "~0.3.7"
   },
   "scripts": {},
   "repository": {
