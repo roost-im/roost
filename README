@@ -1,5 +1,57 @@
 Roost
-where owls go to sleep
+  where owls go to sleep
 
 Roost is an experimental new web-based zephyr client with proper
-authentication.
+authentication. This is the backend component. The official frontend lives in
+the companion roost-client.git repository. If you are primarily interested in
+front-end development, you need only clone that one and develop against the
+official backend.
+
+  https://github.com/davidben/roost-client
+
+Roost subscribes to, logs, and provides an interface for retrieving zephyrgrams
+on behalf of a user. Public subscriptions are deduplicated and subscribed to
+with a public subscriber. What differentiates Roost is how it handles
+personals. Using Webathena, the Roost client gets a hold of a zephyr/zephyr
+service ticket session for the user. This session is then forwarded to the
+server which uses it to run a dedicated personals subscriber, known internally
+as the user's "inner demon". The inner demon handles all personal subs, checks
+authenticity, and sends outgoing messages.
+
+Authentication to the Roost service itself is done with GSSAPI and Kerberos,
+also handled in the browser by Webathena. By using Kerberos to properly
+authenticate zephyr access, we hope that Roost will interoperate better with
+existing zephyr clients while not requiring the user maintain a client or
+mirroring script on some dialup. In addition, as the backend API is plain HTTP
+(and WebSocket) and natively using Kerberos for authentication, we hope it will
+be natural to write clients for non-web platforms using their native Kerberos
+mechanisms.
+
+The backend is written in Node.js, using SockJS to provide a WebSockets
+fallback on older browsers.
+
+Running the backend requires a patched libzephyr to build the zephyr bindings.
+This libzephyr can be found at the master branch of:
+
+  https://github.com/davidben/zephyr
+
+Build into a random prefix and be sure to set CXXFLAGS, LDFLAGS, and
+LD_LIBRARY_FLAGS appropriately for node-zephyr to pick up. Configuration uses
+node-convict. Configure with cjson files specified in a comma-separated list in
+the CONFIG_FILES environment variable. To start, run
+
+  # Install dependencies
+  npm install
+  # Database configuration, etc. See lib/config.js for all options.
+  vim config.json
+  # Generate secrets for sessions, etc.
+  ./bin/generate-secrets.js secrets.json
+  # Initialize database schema.
+  CONFIG_FILES=secrets.json,config.json ./bin/init-tables.js
+  # Start the server.
+  CONFIG_FILES=secrets.json,config.json ./bin/server.js
+
+By default, unless you configure a keytab, the server will run in fake
+authentication mode where it issues a session token for any principal the
+client requests. This is usually suitable for development, but do NOT run
+without a real keytab in production.
