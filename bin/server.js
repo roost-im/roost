@@ -338,7 +338,7 @@ app.post('/v1/zephyrcreds', requireUser, function(req, res) {
 
 // Serve random static files (just the sockjs client right now, needed
 // for the iframe-based transports).
-app.use(express.static(__dirname + '/static'));
+app.use(express.static(path.join(__dirname, '../static')));
 
 var server = http.createServer(app);
 var connectionManager = connections.listen(server, subscriber);
