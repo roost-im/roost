@@ -212,10 +212,20 @@ function writeCredentialSync(fd, cred) {
   writeUInt32BESync(fd, 0);
   writeUInt32BESync(fd, 0);
 
-  // Convert base64-encoded cipher to use ArrayBuffers.
-  cred.ticket.encPart.cipher = new Uint8Array(
-    new Buffer(cred.ticket.encPart.cipher, "base64"));
-  var ticketDER = krb_proto.Ticket.encodeDER(cred.ticket);
+  // Make a copy of the ticket, but with the base64 bits decoded as
+  // Uint8Array. (This is the format the ASN.1 code expects.)
+  var ticket = {
+    tktVno: cred.ticket.tktVno,
+    realm: cred.ticket.realm,
+    sname: cred.ticket.sname,
+    encPart: {
+      kvno: cred.ticket.encPart.kvno,
+      etype: cred.ticket.encPart.etype,
+      cipher: new Uint8Array(new Buffer(cred.ticket.encPart.cipher, "base64"))
+    }
+  };
+  // Now we encode to DER.
+  var ticketDER = krb_proto.Ticket.encodeDER(ticket);
   // And convert the output back to a node buffer.
   ticketDER = new Buffer(new Uint8Array(
     ticketDER.buffer, ticketDER.byteOffset, ticketDER.byteLength));
