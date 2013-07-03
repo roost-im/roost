@@ -20,6 +20,13 @@ var directory = temp.mkdirSync(
 var ccachePath = path.join(directory, 'ccache');
 process.env['KRB5CCNAME'] = 'FILE:' + ccachePath;
 
+var lastGoodTicket = null;
+function handleGoodTicket(cred) {
+  if (lastGoodTicket == null || lastGoodTicket.endtime < cred.endtime) {
+    lastGoodTicket = cred;
+  }
+}
+
 var commands = {};
 
 function updateCredentialCacheSync(creds) {
@@ -97,13 +104,26 @@ commands.start = function(sessionState) {
   started = true;
 };
 
-commands.subscribeTo = function(subs, cred) {
+commands.subscribeTo = function(subs, cred, knownGoodCreds) {
   updateCredentialCacheSync([cred]);
-  return Q.nfcall(zephyr.subscribeToSansDefaults, subs);
+  return Q.nfcall(zephyr.subscribeToSansDefaults, subs).then(function() {
+    // These tickets were good. Hold onto them.
+    handleGoodTicket(cred);
+  }, function(err) {
+    // We know these tickets are good from a previous run. Hold on to
+    // them anyway. Spurious error. This is so we don't lose the
+    // tickets again afterwards.
+    if (knownGoodCreds)
+      handleGoodTicket(cred);
+    throw err;
+  });
 };
 
 commands.dumpSession = function() {
-  return zephyr.dumpSession().toString('base64');
+  return {
+    sessionState: zephyr.dumpSession().toString('base64'),
+    lastGoodTicket: lastGoodTicket
+  };
 };
 
 commands.expel = function() {
