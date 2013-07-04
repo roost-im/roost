@@ -187,10 +187,11 @@ app.post('/v1/auth', function(req, res) {
       throw new error.UserError(403, 'User does not exist');
     return user;
   }).then(function(user) {
-    var token = auth.makeAuthToken(user);
+    var ret = auth.makeAuthToken(user);
     res.json(200, {
       gssToken: respTokenB64,
-      authToken: token
+      authToken: ret.token,
+      expires: ret.expires
     });
   }, function(err) {
     sendError(res, err);
