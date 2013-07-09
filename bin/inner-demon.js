@@ -130,15 +130,6 @@ commands.expel = function() {
   console.log('Inner demon exiting');
   // We intentionally /don't/ cancel subscriptions. Instead, the
   // session state is preserved for later.
-
-  // node-temp is messed up and can't delete temporary
-  // directories. Blow away our ccache first.
-  //
-  // TODO(davidben): Just write your own thing. Really.
-  try {
-    fs.unlinkSync(ccachePath);
-  } catch (e) {
-  }
 };
 
 process.on('message', function(m) {
