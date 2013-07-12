@@ -260,13 +260,14 @@ function isValidSub(sub) {
 }
 
 app.post('/v1/subscribe', requireUser, function(req, res) {
-  if (!isValidSub(req.body.subscription)) {
+  if (!util.isArray(req.body.subscriptions) ||
+      !req.body.subscriptions.every(isValidSub)) {
     // TODO(davidben): Nicer error message.
-    res.send(400, 'Subscription triple expected');
+    res.send(400, 'Subscription triples expected');
     return;
   }
-  subscriber.addUserSubscription(
-    req.user, req.body.subscription, req.body.credentials
+  subscriber.addUserSubscriptions(
+    req.user, req.body.subscriptions, req.body.credentials
   ).then(function(sub) {
     res.json(200, sub);
   }, function(err) {
