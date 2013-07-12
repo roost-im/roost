@@ -4,6 +4,7 @@ var express = require('express');
 var gss = require('gss');
 var http = require('http');
 var path = require('path');
+var Q = require('q');
 var util = require('util');
 
 var auth = require('../lib/auth.js');
@@ -26,17 +27,6 @@ if (conf.get('serverKeytab')) {
   console.error('!!!!!!!!!!!!!!!!!!!!!');
   if (conf.get('production'))
     process.exit(1);
-}
-
-function sendError(res, err) {
-  if (err instanceof error.UserError) {
-    // Blegh.
-    if (err.code == 401)
-      res.set('WWW-Authenticate', 'Bearer');
-    res.send(err.code, err.msg);
-  } else {
-    res.send(500);
-  }
 }
 
 var subscriber = new Subscriber();
@@ -129,12 +119,29 @@ function requireUser(req, res, next) {
   });
 }
 
-app.post('/v1/auth', function(req, res) {
+function jsonAPI(fn) {
+  return function(req, res) {
+    Q.fcall(fn, req).then(function(ret) {
+      res.json(ret);
+    }, function(err) {
+      if (err instanceof error.UserError) {
+        // Blegh.
+        if (err.code == 401)
+          res.set('WWW-Authenticate', 'Bearer');
+        res.send(err.code, err.msg);
+      } else {
+        res.send(500);
+        console.error(err);
+      }
+    }).done();
+  };
+}
+
+app.post('/v1/auth', jsonAPI(function(req) {
   var principal, respTokenB64;
   if (realAuth) {
     if (typeof req.body.token !== 'string') {
-      res.send(400, 'Token expected');
-      return;
+      throw new error.UserError(400, 'Token expected');
     }
 
     var context = gss.createAcceptor(null);
@@ -144,17 +151,14 @@ app.post('/v1/auth', function(req, res) {
     } catch (e) {
       // TODO(davidben): Get the KRB_ERROR out and send it back or
       // something.
-      res.send(403, 'Bad token');
       console.error(e.toString(), e);
-      return;
+      throw new error.UserError(403, 'Bad token');
     }
 
     if (!context.isEstablished()) {
       // We don't support multi-legged auth. But this shouldn't
       // happen.
-      res.send(500, 'Internal error');
-      console.error('ERROR: GSS context did not establish in iteration!');
-      return;
+      throw 'ERROR: GSS context did not establish in iteration!';
     }
 
     principal = context.srcName().toString();
@@ -163,8 +167,7 @@ app.post('/v1/auth', function(req, res) {
   } else {
     principal = req.body.principal;
     if (typeof principal !== "string") {
-      res.send(400, 'Principal expected');
-      return;
+      throw new error.UserError(400, 'Principal expected');
     }
   }
 
@@ -182,43 +185,34 @@ app.post('/v1/auth', function(req, res) {
     userPromise = db.getUser(principal);
   }
 
-  userPromise.then(function(user) {
+  return userPromise.then(function(user) {
     if (user == null)
       throw new error.UserError(403, 'User does not exist');
     return user;
   }).then(function(user) {
     var ret = auth.makeAuthToken(user);
-    res.json(200, {
+    return {
       gssToken: respTokenB64,
       authToken: ret.token,
       expires: ret.expires
-    });
-  }, function(err) {
-    sendError(res, err);
-    console.error(err);
-  }).done();
-});
+    };
+  });
+}));
 
-app.get('/v1/ping', requireUser, function(req, res) {
-  res.json(200, { pong: 1 });
-});
+app.get('/v1/ping', requireUser, jsonAPI(function(req) {
+  return { pong: 1 };
+}));
 
-app.get('/v1/info', requireUser, function(req, res) {
-  db.getUserInfo(req.user).then(function(ret) {
-    res.json(200, ret);
-  }, function(err) {
-    sendError(res, err);
-    console.error(err);
-  }).done();
-});
+app.get('/v1/info', requireUser, jsonAPI(function(req) {
+  return db.getUserInfo(req.user);
+}));
 
-app.post('/v1/info', requireUser, function(req, res) {
+app.post('/v1/info', requireUser, jsonAPI(function(req) {
   if (typeof req.body.info != 'string' ||
       typeof req.body.expectedVersion != 'number') {
-    res.send(400, 'info and expectedVersion required');
-    return;
+    throw new error.UserError(400, 'info and expectedVersion required');
   }
-  db.updateUserInfo(
+  return db.updateUserInfo(
     req.user, req.body.info, req.body.expectedVersion
   ).then(function(updated) {
     if (updated)
@@ -230,22 +224,12 @@ app.post('/v1/info', requireUser, function(req, res) {
         info: ret.info
       };
     });
-  }).then(function(ret) {
-    res.json(200, ret);
-  }, function(err) {
-    sendError(res, err);
-    console.error(err);
-  }).done();
-});
+  });
+}));
 
-app.get('/v1/subscriptions', requireUser, function(req, res) {
-  db.getUserSubscriptions(req.user).then(function(subs) {
-    res.json(200, subs);
-  }, function(err) {
-    sendError(res, err);
-    console.error(err);
-  }).done();
-});
+app.get('/v1/subscriptions', requireUser, jsonAPI(function(req) {
+  return db.getUserSubscriptions(req.user);
+}));
 
 function isValidSub(sub) {
   if (typeof sub !== 'object')
@@ -259,41 +243,30 @@ function isValidSub(sub) {
   return true;
 }
 
-app.post('/v1/subscribe', requireUser, function(req, res) {
+app.post('/v1/subscribe', requireUser, jsonAPI(function(req) {
   if (!util.isArray(req.body.subscriptions) ||
       !req.body.subscriptions.every(isValidSub)) {
     // TODO(davidben): Nicer error message.
-    res.send(400, 'Subscription triples expected');
-    return;
+    throw new error.UserError(400, 'Subscription triples expected');
   }
-  subscriber.addUserSubscriptions(
-    req.user, req.body.subscriptions, req.body.credentials
-  ).then(function(sub) {
-    res.json(200, sub);
-  }, function(err) {
-    sendError(res, err);
-    console.error(err);
-  }).done();
-});
+  return subscriber.addUserSubscriptions(
+    req.user, req.body.subscriptions, req.body.credentials);
+}));
 
-app.post('/v1/unsubscribe', requireUser, function(req, res) {
+app.post('/v1/unsubscribe', requireUser, jsonAPI(function(req) {
   if (!isValidSub(req.body.subscription)) {
     // TODO(davidben): Nicer error message.
-    res.send(400, 'Subscription triple expected');
-    return;
+    throw new error.UserError(400, 'Subscription triple expected');
   }
-  subscriber.removeUserSubscription(
+  return subscriber.removeUserSubscription(
     req.user,
     req.body.subscription
   ).then(function() {
-    res.json(200, { unsubscribed: true });
-  }, function(err) {
-    sendError(res, err);
-    console.error(err);
-  }).done();
-});
+    return { unsubscribed: true };
+  });
+}));
 
-app.get('/v1/messages', requireUser, function(req, res) {
+app.get('/v1/messages', requireUser, jsonAPI(function(req) {
   var offset = req.query.offset;
   if (offset) {
     offset = msgid.unseal(offset);
@@ -301,7 +274,7 @@ app.get('/v1/messages', requireUser, function(req, res) {
     // Punt the empty string too.
     offset = null;
   }
-  db.getMessages(
+  return db.getMessages(
     req.user, offset, {
       inclusive: Boolean(req.query.inclusive|0),
       reverse: Boolean(req.query.reverse|0),
@@ -311,32 +284,26 @@ app.get('/v1/messages', requireUser, function(req, res) {
     result.messages.forEach(function(msg) {
       msg.id = msgid.seal(msg.id);
     });
-    res.json(200, result);
-  }, function(err) {
-    sendError(res, err);
-    console.error(err);
-  }).done();
-});
+    return result;
+  })
+}));
 
-app.get('/v1/zephyrcreds', requireUser, function(req, res) {
-  res.json(200, {
+app.get('/v1/zephyrcreds', requireUser, jsonAPI(function(req) {
+  return {
     needsRefresh: subscriber.needsZephyrCreds(req.user)
-  });
-});
+  };
+}));
 
-app.post('/v1/zephyrcreds', requireUser, function(req, res) {
+app.post('/v1/zephyrcreds', requireUser, jsonAPI(function(req) {
   if (!req.body.credentials) {
-    res.send(400, "Missing credentials parameter");
+    throw new error.UserError(400, "Missing credentials parameter");
   }
-  subscriber.refreshPrivateSubs(
+  return subscriber.refreshPrivateSubs(
     req.user, req.body.credentials
   ).then(function() {
-    res.json(200, { refreshed: true });
-  }, function(err) {
-    sendError(res, err);
-    console.error(err);
-  }).done();
-});
+    return { refreshed: true };
+  });
+}));
 
 // Serve random static files (just the sockjs client right now, needed
 // for the iframe-based transports).
