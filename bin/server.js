@@ -101,6 +101,7 @@ function extractBearerToken(req) {
 }
 
 function requireUser(req, res, next) {
+  res.set('Vary', 'Authorization');
   var token = extractBearerToken(req);
   if (!token) {
     // Appease the HTTP gods who say you need a WWW-Authenticate
