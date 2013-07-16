@@ -339,7 +339,7 @@ subscriber.start().then(function() {
 // Cancel subscriptions on exit.
 ['SIGINT', 'SIGQUIT', 'SIGTERM'].forEach(function(sig) {
   process.on(sig, function() {
-    console.log('Canceling subscriptions...');
+    console.log('Shutting down...');
     subscriber.shutdown().then(function() {
       console.log('Bye');
       process.exit();
