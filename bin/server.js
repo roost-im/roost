@@ -297,12 +297,24 @@ app.get('/v1/zephyrcreds', requireUser, jsonAPI(function(req) {
 
 app.post('/v1/zephyrcreds', requireUser, jsonAPI(function(req) {
   if (!req.body.credentials) {
-    throw new error.UserError(400, "Missing credentials parameter");
+    throw new error.UserError(400, 'Missing credentials parameter');
   }
   return subscriber.refreshPrivateSubs(
     req.user, req.body.credentials
   ).then(function() {
     return { refreshed: true };
+  });
+}));
+
+app.get('/v1/bytime', requireUser, jsonAPI(function(req) {
+  var time = parseInt(req.query.t);
+  if (isNaN(time)) {
+    throw new error.UserError(400, 'Missing t parameter');
+  }
+  return db.findByTime(req.user, time).then(function(id) {
+    return {
+      id: (id == null) ? null : msgid.seal(id)
+    };
   });
 }));
 
@@ -320,7 +332,7 @@ subscriber.start().then(function() {
   console.log('...started');
   server.listen(conf.get('port'), conf.get('ip'), function() {
     var addy = server.address();
-    console.log('running on http://' + addy.address + ":" + addy.port);
+    console.log('running on http://' + addy.address + ':' + addy.port);
   });
 }).done();
 
