@@ -12,6 +12,7 @@ var conf = require('../lib/config.js');
 var connections = require('../lib/connections.js');
 var db = require('../lib/db.js');
 var error = require('../lib/error.js');
+var Filter = require('../lib/filter.js').Filter;
 var msgid = require('../lib/msgid.js');
 var Subscriber = require('../lib/subscriber.js').Subscriber;
 
@@ -275,8 +276,9 @@ app.get('/v1/messages', requireUser, jsonAPI(function(req) {
     // Punt the empty string too.
     offset = null;
   }
+  var filter = new Filter(req.query);
   return db.getMessages(
-    req.user, offset, {
+    req.user, offset, filter, {
       inclusive: Boolean(req.query.inclusive|0),
       reverse: Boolean(req.query.reverse|0),
       limit: req.query.count|0
