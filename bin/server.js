@@ -15,6 +15,7 @@ var error = require('../lib/error.js');
 var Filter = require('../lib/filter.js').Filter;
 var msgid = require('../lib/msgid.js');
 var Subscriber = require('../lib/subscriber.js').Subscriber;
+var zutil = require('../lib/zutil.js');
 
 // Set the keytab.
 var realAuth = false;
@@ -234,15 +235,11 @@ app.get('/v1/subscriptions', requireUser, jsonAPI(function(req) {
 }));
 
 function isValidSub(sub) {
-  if (typeof sub !== 'object')
+  if (sub == null || typeof sub !== 'object')
     return false;
-  if (typeof sub.class !== 'string')
-    return false;
-  if (typeof sub.instance !== 'string')
-    return false;
-  if (typeof sub.recipient !== 'string')
-    return false;
-  return true;
+  return (zutil.isValidString(sub.class) &&
+          zutil.isValidString(sub.instance) &&
+          zutil.isValidString(sub.recipient));
 }
 
 app.post('/v1/subscribe', requireUser, jsonAPI(function(req) {
