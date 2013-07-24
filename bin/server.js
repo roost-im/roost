@@ -317,6 +317,33 @@ app.get('/v1/bytime', requireUser, jsonAPI(function(req) {
   });
 }));
 
+function isValidZwrite(msg) {
+  if (msg == null || typeof msg !== 'object')
+    return false;
+  return (zutil.isValidString(msg.class) &&
+          zutil.isValidString(msg.instance) &&
+          zutil.isValidString(msg.opcode) &&
+          zutil.isValidString(msg.recipient) &&
+          zutil.isValidString(msg.signature) &&
+          zutil.isValidString(msg.message));
+}
+
+app.post('/v1/zwrite', requireUser, jsonAPI(function(req) {
+  if (!req.body.credentials) {
+    throw new error.UserError(400, 'Missing credentials parameter');
+  }
+  if (!isValidZwrite(req.body.message)) {
+    throw new error.UserError(400, 'Bad zwrite');
+  }
+  return subscriber.zwrite(
+    req.user, req.body.message, req.body.credentials
+  ).then(function(ack) {
+    return {
+      ack: ack
+    };
+  });
+}));
+
 // Serve random static files (just the sockjs client right now, needed
 // for the iframe-based transports).
 app.use(express.static(path.join(__dirname, '../static')));
