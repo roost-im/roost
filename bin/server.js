@@ -176,11 +176,14 @@ app.post('/v1/auth', jsonAPI(function(req) {
 
   var userPromise;
   if (req.body.createUser) {
+    var clientId = req.query.clientId;
     // Create user and make default subs.
     userPromise = db.getOrCreateUser(principal).then(function(user) {
       if (!user.newUser)
         return user;
-      return subscriber.addDefaultUserSubscriptions(user).then(function() {
+      return subscriber.addDefaultUserSubscriptions(
+        user, clientId
+      ).then(function() {
         return user;
       });
     });
@@ -218,8 +221,14 @@ app.post('/v1/info', requireUser, jsonAPI(function(req) {
   return db.updateUserInfo(
     req.user, req.body.info, req.body.expectedVersion
   ).then(function(updated) {
-    if (updated)
+    if (updated) {
+      connectionManager.broadcast(req.user, req.query.clientId, {
+        type: 'info-changed',
+        version: req.body.expectedVersion + 1,
+        info: req.body.info
+      });
       return { updated: true };
+    }
     return db.getUserInfo(req.user).then(function(ret) {
       return {
         updated: false,
@@ -249,7 +258,8 @@ app.post('/v1/subscribe', requireUser, jsonAPI(function(req) {
     throw new error.UserError(400, 'Subscription triples expected');
   }
   return subscriber.addUserSubscriptions(
-    req.user, req.body.subscriptions, req.body.credentials);
+    req.user, req.clientId,
+    req.body.subscriptions, req.body.credentials);
 }));
 
 app.post('/v1/unsubscribe', requireUser, jsonAPI(function(req) {
@@ -258,11 +268,7 @@ app.post('/v1/unsubscribe', requireUser, jsonAPI(function(req) {
     throw new error.UserError(400, 'Subscription triple expected');
   }
   return subscriber.removeUserSubscription(
-    req.user,
-    req.body.subscription
-  ).then(function() {
-    return { unsubscribed: true };
-  });
+    req.user, req.clientId, req.body.subscription);
 }));
 
 app.get('/v1/messages', requireUser, jsonAPI(function(req) {
