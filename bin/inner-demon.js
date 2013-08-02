@@ -201,8 +201,9 @@ commands.zwrite = function(msg, cred) {
   // tv_sec, then tv_usec.
   var sec, usec;
   if (notice.uid) {
-    sec = notice.uid.readUInt32BE(4);
-    usec = notice.uid.readUInt32BE(8);
+    var uid = new Buffer(notice.uid, "base64");
+    sec = uid.readUInt32BE(4);
+    usec = uid.readUInt32BE(8);
   }
 
   return deferred.promise;
