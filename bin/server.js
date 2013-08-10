@@ -53,10 +53,13 @@ app.use(function(req, res, next) {
   // vulnerabilities in existing AJAX applications. We don't assume a
   // JSON content-type is same-origin, so it's fine for us.
   //
-  // In addition, this hack is required for IE9 because XDomainRequest
-  // predates CORS and can only send text/plain anyway.
-  if (/^text\/plain($|;)/.test(req.headers['content-type']))
+  // The Internet claims that IE9 only sends text/plain, so it should
+  // be needed here. But I'm not getting it to work. Instead, it sends
+  // nothing, so, uh, also treat no content-type as JSON. Whatever.
+  if (!req.headers['content-type']
+      || /^text\/plain($|;)/.test(req.headers['content-type'])) {
     req.headers['content-type'] = 'application/json;charset=utf-8';
+  }
   next();
 });
 app.use(express.bodyParser());
