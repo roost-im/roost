@@ -17,6 +17,16 @@ var msgid = require('../lib/msgid.js');
 var Subscriber = require('../lib/subscriber.js').Subscriber;
 var zutil = require('../lib/zutil.js');
 
+if (conf.get('enableMemWatch')) {
+  var memwatch = require('memwatch');
+  memwatch.on('leak', function(info) {
+    console.error('LEAK', info);
+  });
+  memwatch.on('stats', function(stats) {
+    console.log('STATS', stats);
+  });
+}
+
 // Set the keytab.
 var realAuth = false;
 if (conf.get('serverKeytab')) {
