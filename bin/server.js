@@ -293,7 +293,7 @@ app.get('/v1/messages', requireUser, jsonAPI(function(req) {
     offset = null;
   }
   var filter = new Filter(req.query);
-  return db.getMessages(
+  return subscriber.getMessages(
     req.user, offset, filter, {
       inclusive: Boolean(req.query.inclusive|0),
       reverse: Boolean(req.query.reverse|0),
