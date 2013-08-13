@@ -285,9 +285,15 @@ app.post('/v1/unsubscribe', requireUser, jsonAPI(function(req) {
 }));
 
 app.get('/v1/messages', requireUser, jsonAPI(function(req) {
+  var reverse = Boolean(req.query.reverse|0);
+  var inclusive = Boolean(req.query.inclusive|0);
   var offset = req.query.offset;
+  // Unseal the offset.
   if (offset) {
     offset = msgid.unseal(offset);
+    // Adjust for inclusiveness:
+    if (inclusive)
+      offset += reverse ? 1 : -1;
   } else {
     // Punt the empty string too.
     offset = null;
@@ -295,8 +301,7 @@ app.get('/v1/messages', requireUser, jsonAPI(function(req) {
   var filter = new Filter(req.query);
   return subscriber.getMessages(
     req.user, offset, filter, {
-      inclusive: Boolean(req.query.inclusive|0),
-      reverse: Boolean(req.query.reverse|0),
+      reverse: reverse,
       limit: req.query.count|0
     }
   ).then(function(result) {
