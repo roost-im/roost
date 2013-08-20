@@ -31,15 +31,16 @@ The backend is written in Node.js, using SockJS to provide a WebSockets
 fallback on older browsers.
 
 Running the backend requires a patched libzephyr to build the zephyr bindings.
-This libzephyr can be found at the master branch of:
+This libzephyr can be found at the roost branch of:
 
   https://github.com/davidben/zephyr
 
 Build into a random prefix and be sure to set CXXFLAGS, LDFLAGS, and
 LD_LIBRARY_FLAGS appropriately for node-zephyr to pick up.
 
-  git clone https://github.com/davidben/zephyr.git
+  git clone https://github.com/davidben/zephyr.git -b roost
   cd zephyr
+  autoreconf -fvi
   ./configure --with-krb5 --prefix=$HOME/roost-zephyr
   make && make install
 
