@@ -173,7 +173,6 @@ commands.zwrite = function(msg, cred) {
           cmd: 'message',
           message: {
             time: sec * 1000 + usec / 1000,
-            receiveTime: new Date().getTime(),
             class: msg.class,
             classKey: classKey,
             classKeyBase: message.baseString(classKey),
