@@ -71,3 +71,7 @@ By default, unless you configure a keytab, the server will run in fake
 authentication mode where it issues a session token for any principal the
 client requests. This is usually suitable for development, but do NOT run
 without a real keytab in production.
+
+Run the unit tests with
+
+  npm test
