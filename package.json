@@ -22,7 +22,9 @@
   "author": "David Benjamin <davidben@mit.edu>",
   "license": "MIT",
   "devDependencies": {
-    "priorityqueuejs": "~0.1.0"
+    "priorityqueuejs": "~0.1.0",
+    "chai": "~1.7.2",
+    "mocha": "~1.12.0"
   },
   "bugs": {
     "url": "https://github.com/davidben/roost/issues"
