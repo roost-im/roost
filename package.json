@@ -5,7 +5,7 @@
   "dependencies": {
     "express": "3.x",
     "gss": "git+https://github.com/davidben/node-gss.git",
-    "mysql": "~2.0.0-alpha8",
+    "mysql": "~2.0.0-alpha9",
     "q": "0.9.x",
     "zephyr": "git+https://github.com/davidben/node-zephyr.git",
     "convict": "~0.3.3",
