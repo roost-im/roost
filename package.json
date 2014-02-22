@@ -4,10 +4,10 @@
   "description": "Where owls go to sleep.",
   "dependencies": {
     "express": "3.x",
-    "gss": "git+https://github.com/davidben/node-gss.git",
+    "gss": "git+https://github.com/roost-im/node-gss.git",
     "mysql": "~2.0.0-alpha9",
     "q": "0.9.x",
-    "zephyr": "git+https://github.com/davidben/node-zephyr.git",
+    "zephyr": "git+https://github.com/roost-im/node-zephyr.git",
     "convict": "~0.3.3",
     "temp": "~0.5.1",
     "client-sessions": "~0.5.0",
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/davidben/roost.git"
+    "url": "git://github.com/roost-im/roost.git"
   },
   "author": "David Benjamin <davidben@mit.edu>",
   "license": "MIT",
@@ -29,6 +29,6 @@
     "mocha": "~1.12.0"
   },
   "bugs": {
-    "url": "https://github.com/davidben/roost/issues"
+    "url": "https://github.com/roost-im/roost/issues"
   }
 }
