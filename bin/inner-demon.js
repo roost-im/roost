@@ -122,90 +122,97 @@ commands.subscribeTo = function(subs, cred, knownGoodCreds) {
 
 commands.zwrite = function(msg, cred) {
   updateCredentialCacheSync([cred]);
-  var deferred = Q.defer();
-  var notice =
-    zephyr.sendNotice(message.zwriteToNotice(principalStr, msg), zephyr.ZAUTH);
-  notice.on('servack', function(err, ack) {
-    if (err) {
-      deferred.reject(err);
-    } else {
-      handleGoodTicket(cred);
-      deferred.resolve(ack);
-
-      // This shouldn't happen.
-      if (sec === undefined || usec === undefined)
-        throw "Didn't get uid!";
-
-      // Add outgoing messages. It's awkward that we want to do this
-      // here, but other code doesn't have access to the
-      // timestamp.
-      //
-      // TODO(davidben): Unless we maybe return it and then deliver
-      // the SERVACK later. Arguably we want to do that anyway so that
-      // it can be passed all the way back to the client on the socket
-      // /before/ any forward-tails continue. Then the client knows
-      // what to correlate its pending message with.
-      //
-      // Of course, if we do that, we have the additional awkwardness
-      // of losing precision in the timestamp. Actually want to return
-      // the ZUnique_Id_t. So we add ANOTHER COLUMN. Except the
-      // column's not really used for much, so that feels really quite
-      // silly. Maybe we could get away with only doing it for live
-      // messages? I dunno. It feels wrong to have live messages and
-      // database messages return different things.
-      //
-      // It wooould just be another 12 bytes per message... doesn't
-      // have to be indexed or even variable-length.
-      //
-      // Anyway, we'll do all that later if that UI is ever
-      // added. Given that it's just an animation, maybe we don't need
-      // as correct a correlation.
-      //
-      // (The question is, if you want to do some animation or
-      // whatever to transition the pending message to the
-      // outgoing/received version, you want to be able to match them
-      // up. Moreover, you have to avoid the race where you find out
-      // the correlation parameters after the message comes in.)
-      if (zutil.isPersonal(msg.recipient)) {
-        var classKey = zephyr.downcase(msg.class);
-        var instanceKey = zephyr.downcase(msg.instance);
-        process.send({
-          cmd: 'message',
-          message: {
-            time: sec * 1000 + usec / 1000,
-            class: msg.class,
-            classKey: classKey,
-            classKeyBase: message.baseString(classKey),
-            instance: msg.instance,
-            instanceKey: instanceKey,
-            instanceKeyBase: message.baseString(instanceKey),
-            sender: principalStr,
-            recipient: msg.recipient,
-            // TODO(davidben): When supporting CC's, this hook needs to change.
-            conversation: msg.recipient,
-            isPersonal: true,
-            isOutgoing: true,
-            // TODO(davidben): Merp?
-            auth: 1,
-            opcode: msg.opcode,
-            signature: msg.signature,
-            message: msg.message
+  var sec, usec;
+  var allNoticesSent = Q.all(
+    message.zwriteToNotices(principalStr, msg).map(function(notice) {
+      var inner = Q.defer();
+      var notice = zephyr.sendNotice(notice, zephyr.ZAUTH)
+        .on('servack', function(err, ack) {
+          if (err) {
+            inner.reject(err);
+          } else {
+            handleGoodTicket(cred);
+            inner.resolve(ack);
           }
         });
+
+      // Extract the time from the uid. First 32-bits are in_addr. Then
+      // tv_sec, then tv_usec.
+      if (notice.uid) {
+        var uid = new Buffer(notice.uid, "base64");
+        sec = uid.readUInt32BE(4);
+        usec = uid.readUInt32BE(8);
       }
+      return inner.promise;
+    }));
+
+  allNoticesSent.then(function() {
+    // This shouldn't happen.
+    if (sec === undefined || usec === undefined)
+      throw "Didn't get uid!";
+
+    // Add outgoing messages. It's awkward that we want to do this
+    // here, but other code doesn't have access to the
+    // timestamp.
+    //
+    // TODO(davidben): Unless we maybe return it and then deliver
+    // the SERVACK later. Arguably we want to do that anyway so that
+    // it can be passed all the way back to the client on the socket
+    // /before/ any forward-tails continue. Then the client knows
+    // what to correlate its pending message with.
+    //
+    // Of course, if we do that, we have the additional awkwardness
+    // of losing precision in the timestamp. Actually want to return
+    // the ZUnique_Id_t. So we add ANOTHER COLUMN. Except the
+    // column's not really used for much, so that feels really quite
+    // silly. Maybe we could get away with only doing it for live
+    // messages? I dunno. It feels wrong to have live messages and
+    // database messages return different things.
+    //
+    // It wooould just be another 12 bytes per message... doesn't
+    // have to be indexed or even variable-length.
+    //
+    // Anyway, we'll do all that later if that UI is ever
+    // added. Given that it's just an animation, maybe we don't need
+    // as correct a correlation.
+    //
+    // (The question is, if you want to do some animation or
+    // whatever to transition the pending message to the
+    // outgoing/received version, you want to be able to match them
+    // up. Moreover, you have to avoid the race where you find out
+    // the correlation parameters after the message comes in.)
+    if (zutil.arePersonal(msg.recipient)) {
+      var classKey = zephyr.downcase(msg.class);
+      var instanceKey = zephyr.downcase(msg.instance);
+      // Null-delimit the list of recipients. This is kind of a hack, but
+      // recipients are guaranteed not to contain null characters.
+      var recipientStr = msg.recipient.join('\0');
+      process.send({
+        cmd: 'message',
+        message: {
+          time: sec * 1000 + usec / 1000,
+          class: msg.class,
+          classKey: classKey,
+          classKeyBase: message.baseString(classKey),
+          instance: msg.instance,
+          instanceKey: instanceKey,
+          instanceKeyBase: message.baseString(instanceKey),
+          sender: principalStr,
+          recipient: recipientStr,
+          conversation: recipientStr,
+          isPersonal: true,
+          isOutgoing: true,
+          // TODO(davidben): Merp?
+          auth: 1,
+          opcode: msg.opcode,
+          signature: msg.signature,
+          message: zutil.buildCcLine(msg.recipient) + msg.message
+        }
+      });
     }
   });
 
-  // Extract the time from the uid. First 32-bits are in_addr. Then
-  // tv_sec, then tv_usec.
-  var sec, usec;
-  if (notice.uid) {
-    var uid = new Buffer(notice.uid, "base64");
-    sec = uid.readUInt32BE(4);
-    usec = uid.readUInt32BE(8);
-  }
-
-  return deferred.promise;
+  return allNoticesSent;
 };
 
 commands.dumpSession = function() {

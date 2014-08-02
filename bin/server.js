@@ -347,7 +347,7 @@ function isValidZwrite(msg) {
   return (zutil.isValidString(msg.class) &&
           zutil.isValidString(msg.instance) &&
           zutil.isValidString(msg.opcode) &&
-          zutil.isValidString(msg.recipient) &&
+          zutil.areValidRecipients(msg.recipient) &&
           zutil.isValidString(msg.signature) &&
           zutil.isValidString(msg.message));
 }
@@ -356,6 +356,9 @@ app.post('/v1/zwrite', requireUser, jsonAPI(function(req) {
   if (!req.body.credentials) {
     throw new error.UserError(400, 'Missing credentials parameter');
   }
+
+  var message = req.body.message;
+  message.recipient = message.recipient.split(/\0/).map(zutil.longZuser).sort();
   if (!isValidZwrite(req.body.message)) {
     throw new error.UserError(400, 'Bad zwrite');
   }
