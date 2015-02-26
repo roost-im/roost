@@ -30,42 +30,21 @@ mechanisms.
 The backend is written in Node.js, using SockJS to provide a WebSockets
 fallback on older browsers.
 
-Running the backend requires a patched libzephyr to build the zephyr bindings.
-This libzephyr can be found at the roost branch of:
-
-  https://github.com/davidben/zephyr
-
-Build into a random prefix and be sure to set CXXFLAGS, LDFLAGS, and
-LD_LIBRARY_FLAGS appropriately for node-zephyr to pick up.
-
-  git clone https://github.com/davidben/zephyr.git -b roost
-  cd zephyr
-  autoreconf -fvi
-  ./configure --with-krb5 --prefix=$HOME/roost-zephyr
-  make && make install
-
-I recommend saving those variables in a shell script. Something like:
-
-  #!/bin/sh
-  ZEPHYR_ROOT=$HOME/roost-zephyr
-  export CXXFLAGS="-I$ZEPHYR_ROOT/include"
-  export LDFLAGS="-L$ZEPHYR_ROOT/lib"
-  export LD_LIBRARY_PATH="$ZEPHYR_ROOT/lib"
-  exec "$@"
+Running the backend requires libzephyr 3.1 or newer.
 
 Configuration uses node-convict. Configure with cjson files specified in a
 comma-separated list in the CONFIG_FILES environment variable. To start, run
 
   # Install dependencies
-  ./env.sh npm install
+  npm install
   # Database configuration, etc. See lib/config.js for all options.
   vim config.json
   # Generate secrets for sessions, etc.
-  ./env.sh ./bin/generate-secrets.js secrets.json
+  ./bin/generate-secrets.js secrets.json
   # Initialize database schema.
-  CONFIG_FILES=secrets.json,config.json ./env.sh ./bin/init-tables.js
+  CONFIG_FILES=secrets.json,config.json ./bin/init-tables.js
   # Start the server.
-  CONFIG_FILES=secrets.json,config.json ./env.sh ./bin/server.js
+  CONFIG_FILES=secrets.json,config.json ./bin/server.js
 
 By default, unless you configure a keytab, the server will run in fake
 authentication mode where it issues a session token for any principal the
